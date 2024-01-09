@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use crate::raw_bindings::raw_bindings::{iphdr, tcphdr};
 
 #[derive(Debug)]
@@ -10,8 +9,8 @@ pub struct PseudoHeader {
     pub tcp_length: u16,
 }
 
-pub struct DataGram {
+pub struct DataGram<'a> {
     pub iphdr: iphdr,
     pub tcphdr: tcphdr,
-    pub data: CString,
+    pub data: &'a [u8],
 }

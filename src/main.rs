@@ -1,4 +1,5 @@
 #![feature(cstr_count_bytes)]
+#![cfg_attr(debug_assertions, allow(warnings))]
 
 use std::ffi::{c_int, CString};
 use std::mem::size_of;
@@ -9,54 +10,58 @@ use rand::random;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 
-use crate::raw_bindings::raw_bindings::{htons, in_addr, inet_addr, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, PF_INET, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
-use crate::tcp::data::DataGram;
+use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
+use crate::tcp::miao_tcp::TCPPacket;
 
 mod raw_bindings;
 mod tcp;
 
 #[tokio::main]
 async fn main() {
-    let receive_coroutine = tokio::spawn(receive_packet());
+    let socket = unsafe {
+        let socket = socket(AF_INET as c_int, SOCK_RAW, IPPROTO_TCP as c_int);
+        if socket < 0 {
+            panic!("Create socket failed, error: {}", socket);
+        }
 
-    tokio::spawn(async {
+        let one = 1;
+        let opt = setsockopt(socket, IPPROTO_IP as c_int, IP_HDRINCL as c_int, &one as *const i32 as *const c_void, 4);
+        if opt == -1 {
+            panic!("Create socket failed, error: {}", opt);
+        }else {
+            println!("Create socket success, socket id: {}", socket);
+            println!("Create socket success, opt return: {}", opt);
+        }
+        socket
+    };
+    let port: u16 = random();
+
+    let receive_coroutine = tokio::spawn(receive_packet(socket, port));
+
+    tokio::spawn(async move {
         let mut reader = BufReader::new(io::stdin());
         loop {
             let input = read_user_input(&mut reader).await.unwrap();
-            // println!("running");
             if input.trim() == "exit" {
                 break;
             }
 
-            send_packet().await;
+            send_packet(socket, port).await;
         }
     }).await.unwrap();
 
     receive_coroutine.await.unwrap();
 }
 
-async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
-    let mut buffer = String::new();
-    reader.read_line(&mut buffer).await?;
-    Ok(buffer)
-}
+async fn receive_packet(socket: c_int, port: u16) {
+    let mut sockaddr_in = unsafe {
+        let addr = CString::new("127.0.0.1").unwrap();
 
-async fn receive_packet() {
-    let socket = unsafe {
-        let socket = socket(PF_INET as c_int, SOCK_RAW, IPPROTO_TCP as c_int);
-        if socket < 0 {
-            panic!("Create socket failed, error: {}", socket);
-        }
-        socket
-    };
-
-    let destination_addr = CString::new("127.0.0.1").unwrap();
-    let mut receive_addr = unsafe {
         sockaddr_in {
-            sin_family: PF_INET as u16,
-            sin_port: htons(65534),
+            sin_family: AF_INET as u16,
+            sin_port: htons(port),
             sin_addr: in_addr {
-                s_addr: inet_addr(destination_addr.as_ptr()),
+                s_addr: inet_addr(addr.as_ptr()),
             },
             sin_zero: [0; 8],
         }
@@ -67,18 +72,19 @@ async fn receive_packet() {
     let mut buffer = BytesMut::with_capacity(4096);
     buffer.resize(4096, 0);
 
+    println!("receive socket: {}", socket);
     loop {
-        unsafe {
-            let r = recvfrom(
+        let receive_size = unsafe {
+            println!("Waiting for packet...");
+            recvfrom(
                 socket,
                 buffer.as_ptr() as *mut u8 as *mut c_void,
                 buffer.len(),
                 0,
-                &mut receive_addr as *mut sockaddr_in as *mut sockaddr,
+                &mut sockaddr_in as *mut sockaddr_in as *mut sockaddr,
                 &mut addr_len as *mut u32,
-            );
-            println!("Received packet {}, size: {}", receive_addr, r);
-        }
+            )
+        };
 
         unsafe {
             let ip_head = *(buffer.as_ptr() as *const iphdr);
@@ -91,63 +97,56 @@ async fn receive_packet() {
             string.push_str("Received: {\n");
             string.push_str(format!("  received ip head: {}\n", ip_head).as_str());
             string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
+            string.push_str(format!("  received size: {}\n", receive_size).as_str());
             string.push_str("}\n");
             println!("{}", string);
         }
     }
 }
 
-async fn send_packet() {
-    let socket = unsafe {
-        let socket = socket(PF_INET as c_int, SOCK_RAW, IPPROTO_TCP as c_int);
-        if socket < 0 {
-            panic!("Create socket failed, error: {}", socket);
-        }
-
-        setsockopt(socket, IPPROTO_IP as c_int, IP_HDRINCL as c_int, 1 as *const c_void, 4);
-        socket
-    };
-
-
+async fn send_packet(socket: c_int, port: u16) {
     let data = CString::new("miao~").unwrap();
 
-    let iphdr = iphdr::default(data.count_bytes(), "127.0.0.1", "127.0.0.1");
-    let tcphdr = tcphdr::default(random(), 65534, data.count_bytes());
-
     let sockaddr_in = unsafe {
-        sockaddr_in {
-            sin_family: PF_INET as u16,
+        let mut addr = sockaddr_in {
+            sin_family: AF_INET as u16,
             sin_port: htons(65534),
-            sin_addr: in_addr {
-                s_addr: iphdr.daddr,
-            },
-            sin_zero: [0; 8],
+            ..Default::default()
+        };
+
+        let ip = CString::new("127.0.0.1").unwrap();
+        let res = inet_pton(AF_INET as c_int, ip.as_ptr(), &mut addr.sin_addr as *mut in_addr as *mut c_void);
+        if res != 1 {
+            panic!("error on inet_pton: {}", res)
         }
+        addr
     };
 
-    let data_gram = DataGram {
-        iphdr,
-        tcphdr,
-        data: data.clone()
-    };
-
-    // println!("ip头大小：{}, tcp头大小：{}", size_of::<iphdr>(), size_of::<tcphdr>());
+    let mut packet = TCPPacket::default("127.0.0.1:65534", data, port).unwrap();
+    packet.syn_packet();
 
     unsafe {
         let i = sendto(
             socket,
-            &data_gram as *const DataGram as *const c_void,
-            size_of::<iphdr>() + size_of::<tcphdr>() + data.count_bytes(),
+            &packet as *const TCPPacket<CString> as *const c_void,
+            size_of::<iphdr>() + size_of::<tcphdr>() + packet.data_length(),
             0,
             &sockaddr_in as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
         );
+
         let mut string = String::new();
         string.push_str("Send: {\n");
-        string.push_str(format!(" ip head to send: {}\n", iphdr).as_str());
-        string.push_str(format!(" tcp head to send: {}\n", tcphdr).as_str());
+        string.push_str(format!(" ip head to send: {}\n", packet.ip_head).as_str());
+        string.push_str(format!(" tcp head to send: {}\n", packet.tcp_head).as_str());
         string.push_str(format!(" Send packet with size: {}\n", i).as_str());
         string.push_str("}\n");
         println!("{}", string);
     };
+}
+
+async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
+    let mut buffer = String::new();
+    reader.read_line(&mut buffer).await?;
+    Ok(buffer)
 }
