@@ -20,7 +20,7 @@ mod tcp;
 async fn main() {
     let socket = unsafe {
         let socket = socket(AF_INET as c_int, SOCK_RAW, IPPROTO_TCP as c_int);
-        if socket < 0 {
+        if socket == -1 {
             panic!("Create socket failed, error: {}", socket);
         }
 
@@ -28,7 +28,7 @@ async fn main() {
         let opt = setsockopt(socket, IPPROTO_IP as c_int, IP_HDRINCL as c_int, &one as *const i32 as *const c_void, 4);
         if opt == -1 {
             panic!("Create socket failed, error: {}", opt);
-        }else {
+        } else {
             println!("Create socket success, socket id: {}", socket);
             println!("Create socket success, opt return: {}", opt);
         }
@@ -126,7 +126,7 @@ async fn send_packet(socket: c_int, port: u16) {
     packet.syn_packet();
 
     unsafe {
-        let i = sendto(
+        let sent_size = sendto(
             socket,
             &packet as *const TCPPacket<CString> as *const c_void,
             size_of::<iphdr>() + size_of::<tcphdr>() + packet.data_length(),
@@ -139,10 +139,10 @@ async fn send_packet(socket: c_int, port: u16) {
         string.push_str("Send: {\n");
         string.push_str(format!(" ip head to send: {}\n", packet.ip_head).as_str());
         string.push_str(format!(" tcp head to send: {}\n", packet.tcp_head).as_str());
-        string.push_str(format!(" Send packet with size: {}\n", i).as_str());
+        string.push_str(format!(" Send packet with size: {}\n", sent_size).as_str());
         string.push_str("}\n");
         println!("{}", string);
-    };
+    }
 }
 
 async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
