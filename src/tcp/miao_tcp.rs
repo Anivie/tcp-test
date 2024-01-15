@@ -35,22 +35,22 @@ impl<T: ToData + ToLength> TCPPacket<T> {
         self.data.to_length()
     }
 
+    #[allow(dead_code)]
     pub fn change_data(&mut self, data: T) {
         self.data = data;
         self.check();
     }
 
     fn get_tcp_check(&self) -> u16 {
-        let pseudo_header = unsafe {
-            PseudoHeader {
-                source_address: self.ip_head.saddr,
-                dest_address: self.ip_head.daddr,
-                placeholder: 0,
-                protocol: self.ip_head.protocol,
-                tcp_length: (size_of::<tcphdr>() + self.data.to_length()) as u16
-            }
+        let pseudo_header = PseudoHeader {
+            source_address: self.ip_head.saddr,
+            dest_address: self.ip_head.daddr,
+            placeholder: 0,
+            protocol: self.ip_head.protocol,
+            tcp_length: (size_of::<tcphdr>() + self.data.to_length()) as u16
         };
 
+        #[allow(dead_code)]
         struct TCPCheck {
             pseudo_header: PseudoHeader,
             tcp_header: tcphdr,
@@ -74,6 +74,7 @@ impl<T: ToData + ToLength> TCPPacket<T> {
     }
 
     #[inline]
+    #[allow(unused_unsafe)]
     fn check(&mut self) {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
