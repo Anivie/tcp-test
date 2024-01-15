@@ -8,7 +8,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 use rand::random;
-use crate::raw_bindings::raw_bindings::{htonl, htons, in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, ntohs, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, ntohs, sockaddr_in, tcphdr};
 
 impl iphdr {
     #[inline]
@@ -20,7 +20,7 @@ impl iphdr {
             iphdr {
                 tos: 0,
                 tot_len: (size_of::<iphdr>() + size_of::<tcphdr>() + data_len) as u16,
-                id: htonl(random()) as u16,
+                id: random::<u16>().to_be(),
                 frag_off: 0,
                 ttl: 64,
                 protocol: IPPROTO_TCP as u8,
@@ -52,10 +52,10 @@ impl tcphdr {
         let mut tcphdr = Self::new();
 
         unsafe {
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.source = htons(source_port);
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = htons(destination_port);
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = htonl(random());
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = htonl(0);
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.source = source_port.to_be();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = destination_port.to_be();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = random::<u32>().to_be();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0_u32.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_doff(20);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_fin(0);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_syn(0);
@@ -63,7 +63,7 @@ impl tcphdr {
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_psh(0);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_ack(0);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_urg(0);
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = htons(5840);
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 5840_u16.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.check = 0;
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.urg_ptr = 0;
         };

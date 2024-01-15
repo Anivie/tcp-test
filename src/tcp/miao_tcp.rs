@@ -76,8 +76,10 @@ impl<T: ToData + ToLength> TCPPacket<T> {
     #[inline]
     fn check(&mut self) {
         unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
         }
+        self.ip_head.check = 0;
         self.ip_head.check = self.get_ip_check();
     }
 

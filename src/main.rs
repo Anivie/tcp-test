@@ -10,7 +10,7 @@ use rand::random;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 
-use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
+use crate::raw_bindings::raw_bindings::{AF_INET, getsockopt, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SO_ERROR, SOCK_RAW, sockaddr, sockaddr_in, socket, socklen_t, SOL_SOCKET, tcphdr};
 use crate::tcp::miao_tcp::TCPPacket;
 
 mod raw_bindings;
@@ -134,6 +134,18 @@ async fn send_packet(socket: c_int, port: u16) {
             &sockaddr_in as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
         );
+
+        let mut a = i32::MAX;
+        let mut b = 4;
+        let opt = getsockopt(
+            socket,
+            SOL_SOCKET as c_int,
+            SO_ERROR as c_int,
+            &mut a as *mut i32 as *mut c_void,
+            &mut b as *mut i32 as *mut socklen_t,
+        );
+        println!("getsockopt return: {}", opt);
+        println!("getsockopt value: {}", a);
 
         let mut string = String::new();
         string.push_str("Send: {\n");
