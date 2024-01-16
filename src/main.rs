@@ -122,13 +122,16 @@ async fn send_packet(socket: c_int, port: u16) {
         addr
     };
 
-    let mut packet = TCPPacket::default("127.0.0.1:65534", data, port).unwrap();
-    packet.syn_packet();
+    let mut packet = {
+        let mut packet = TCPPacket::default("127.0.0.1:65534", data, port).unwrap();
+        packet.syn_packet();
+        packet
+    };
 
     unsafe {
         let sent_size = sendto(
             socket,
-            &packet as *const TCPPacket<CString> as *const c_void,
+            packet.new_bytes().as_ptr() as *const c_void,
             size_of::<iphdr>() + size_of::<tcphdr>() + packet.data_length(),
             0,
             &sockaddr_in as *const sockaddr_in as *const sockaddr,

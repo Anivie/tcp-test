@@ -24,6 +24,35 @@ impl<T: ToData + ToLength> TCPPacket<T> {
         Ok(data_gram)
     }
 
+    pub fn new_bytes(&self) -> Vec<u8> {
+        let size = size_of::<Self>();
+
+        let mut bytes =Vec::with_capacity(size);
+        self.to_bytes(&mut bytes);
+
+        bytes
+    }
+
+    pub fn to_bytes(&self, back: &mut Vec<u8>) {
+        unsafe {
+            let ip = &self.ip_head as *const iphdr as *const u8;
+            for e in 0..size_of::<iphdr>() {
+                back.push(*ip.offset(e as isize))
+            }
+        };
+
+        unsafe {
+            let tcp = &self.tcp_head as *const tcphdr as *const u8;
+            for e in 0..size_of::<iphdr>() {
+                back.push(*tcp.offset(e as isize))
+            }
+        };
+
+        for x in self.data.to_data() {
+            back.push(*x)
+        }
+    }
+
     pub fn syn_packet(&mut self) {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
