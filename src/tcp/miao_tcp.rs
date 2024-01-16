@@ -43,7 +43,7 @@ impl<T: ToData + ToLength> TCPPacket<T> {
 
         unsafe {
             let tcp = &self.tcp_head as *const tcphdr as *const u8;
-            for e in 0..size_of::<iphdr>() {
+            for e in 0..size_of::<tcphdr>() {
                 back.push(*tcp.offset(e as isize))
             }
         };
