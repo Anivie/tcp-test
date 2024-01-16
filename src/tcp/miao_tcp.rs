@@ -26,7 +26,7 @@ impl TCPPacket {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_pointer(&mut self) -> *const c_void {
+    pub fn as_ptr(&mut self) -> *const c_void {
         self.check();
 
         self.data_vec.clear();
@@ -52,7 +52,7 @@ impl TCPPacket {
     }
 
     #[inline]
-    pub fn size(&self) -> usize {
+    pub fn len(&self) -> usize {
         size_of::<iphdr>() + size_of::<tcphdr>() + self.data.to_length()
     }
 

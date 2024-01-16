@@ -139,8 +139,8 @@ async fn send_packet(socket: c_int, port: u16) {
     unsafe {
         let sent_size = sendto(
             socket,
-            packet.to_pointer(),
-            packet.size(),
+            packet.as_ptr(),
+            packet.len(),
             0,
             &sockaddr_to as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
