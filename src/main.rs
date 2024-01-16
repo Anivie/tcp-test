@@ -9,6 +9,7 @@ use bytes::BytesMut;
 use rand::random;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
+use tracing::{info, Level, warn};
 
 use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
 use crate::tcp::miao_tcp::TCPPacket;
@@ -21,6 +22,10 @@ const REMOTE_PORT: u16 = 65534;
 
 #[tokio::main]
 async fn main() {
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .init();
+
     let socket = unsafe {
         let socket = socket(AF_INET as c_int, SOCK_RAW, IPPROTO_TCP as c_int);
         if socket == -1 {
@@ -32,8 +37,8 @@ async fn main() {
         if opt == -1 {
             panic!("Create socket failed, error: {}", opt);
         } else {
-            println!("Create socket success, socket id: {}", socket);
-            println!("Create socket success, opt return: {}", opt);
+            info!("Create socket success, socket id: {}", socket);
+            info!("Create socket success, opt return: {}", opt);
         }
         socket
     };
@@ -44,11 +49,7 @@ async fn main() {
     tokio::spawn(async move {
         let mut reader = BufReader::new(io::stdin());
         loop {
-            let input = read_user_input(&mut reader).await.unwrap();
-            if input.trim() == "exit" {
-                break;
-            }
-
+            read_user_input(&mut reader).await.unwrap();
             send_packet(socket, port).await;
         }
     }).await.unwrap();
@@ -75,10 +76,9 @@ async fn receive_packet(socket: c_int, port: u16) {
     let mut buffer = BytesMut::with_capacity(4096);
     buffer.resize(4096, 0);
 
-    println!("receive socket: {}", socket);
+    info!("receive socket: {}", socket);
     loop {
         let receive_size = unsafe {
-            println!("Waiting for packet...");
             recvfrom(
                 socket,
                 buffer.as_ptr() as *mut u8 as *mut c_void,
@@ -93,23 +93,24 @@ async fn receive_packet(socket: c_int, port: u16) {
             let ip_head = *(buffer.as_ptr() as *const iphdr);
             let tcp_head = *(buffer.as_ptr().offset(size_of::<iphdr>() as isize) as *const tcphdr);
             if ip_head.protocol != 6 {
-                println!("Received packet is not a TCP packet, thrown.");
+                warn!("Received packet is not a TCP packet, thrown.");
                 continue;
             }
+
             let mut string = String::new();
             string.push_str("Received: {\n");
             string.push_str(format!("  received ip head: {}\n", ip_head).as_str());
             string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
             string.push_str(format!("  received size: {}\n", receive_size).as_str());
             string.push_str("}\n");
-            println!("{}", string);
+            info!("{}", string);
         }
     }
 }
 
-
 async fn send_packet(socket: c_int, port: u16) {
-    let data = CString::new("miao~").unwrap();
+    // let data = CString::new("miao~").unwrap();
+    let data = "miao~";
 
     let sockaddr_to = unsafe {
         let mut addr = sockaddr_in {
@@ -127,16 +128,19 @@ async fn send_packet(socket: c_int, port: u16) {
     };
 
     let mut packet = {
-        let mut packet = TCPPacket::default(format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT).as_str(), data, port).unwrap();
+        let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
+        let mut packet = TCPPacket::default(address.as_str(), data, port).unwrap();
         packet.syn_packet();
         packet
     };
+    // let mut packet_: Vec<u8> = vec![];
+    // BASE64_STANDARD.decode_vec("RQA8AAAAAABABj8nfwAAAX8AAAE4Mf/+QsKqTAAAAACgAhbQH4cAAAIEADAEAgAAAAAAAAAAAAAAAAAA", &mut packet_).unwrap();
 
     unsafe {
         let sent_size = sendto(
             socket,
-            packet.new_bytes().as_ptr() as *const c_void,
-            size_of::<iphdr>() + size_of::<tcphdr>() + packet.data_length(),
+            packet.to_pointer(),
+            packet.size(),
             0,
             &sockaddr_to as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
@@ -148,12 +152,12 @@ async fn send_packet(socket: c_int, port: u16) {
         string.push_str(format!(" tcp head to send: {}\n", packet.tcp_head).as_str());
         string.push_str(format!(" Send packet with size: {}\n", sent_size).as_str());
         string.push_str("}\n");
-        println!("{}", string);
+        info!("{}", string);
     }
 }
 
 async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
     let mut buffer = String::new();
     reader.read_line(&mut buffer).await?;
-    Ok(buffer)
+    Ok(buffer.trim_end().to_string())
 }

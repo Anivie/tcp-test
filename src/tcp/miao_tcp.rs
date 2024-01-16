@@ -1,73 +1,71 @@
+use std::ffi::{c_void, CString};
 use std::mem::size_of;
 
-use crate::raw_bindings::raw_bindings::{iphdr, tcphdr};
+use crate::raw_bindings::raw_bindings::{htonl, iphdr, tcphdr};
 use crate::tcp::data::PseudoHeader;
-use crate::tcp::util::{ToAddress, ToData, ToLength};
+use crate::tcp::util::{ToAddress, ToCstring, ToLength};
 
-pub struct TCPPacket<T: ToData + ToLength> {
+pub struct TCPPacket {
     pub ip_head: iphdr,
     pub tcp_head: tcphdr,
-    data: T,
+
+    data: CString,
+    data_vec: Vec<u8>
 }
 
-impl<T: ToData + ToLength> TCPPacket<T> {
-    pub fn default<A: ToAddress>(address: A, packet: T, source_port: u16) -> Result<TCPPacket<T>, String> {
+impl TCPPacket {
+    pub fn default<A: ToAddress, T: ToCstring + ToLength>(address: A, data: T, source_port: u16) -> Result<TCPPacket, String> {
         let (port, addr) = address.to_address().ok_or("Invalid address")?;
 
-        let mut data_gram = TCPPacket {
-            ip_head: iphdr::default(packet.to_length(), "127.0.0.1", addr),
+        Ok(TCPPacket {
+            ip_head: iphdr::default(data.to_length(), "127.0.0.1", addr),
             tcp_head: tcphdr::default(source_port, port),
-            data: packet,
-        };
-
-        data_gram.check();
-        Ok(data_gram)
+            data: data.to_cstring().map_err(|e| e.to_string())?,
+            data_vec: Vec::with_capacity(size_of::<Self>())
+        })
     }
 
-    pub fn new_bytes(&self) -> Vec<u8> {
-        let size = size_of::<Self>();
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_pointer(&mut self) -> *const c_void {
+        self.check();
 
-        let mut bytes =Vec::with_capacity(size);
-        self.to_bytes(&mut bytes);
-
-        bytes
-    }
-
-    pub fn to_bytes(&self, back: &mut Vec<u8>) {
+        self.data_vec.clear();
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
             for e in 0..size_of::<iphdr>() {
-                back.push(*ip.offset(e as isize))
+                self.data_vec.push(*ip.offset(e as isize))
             }
         };
 
         unsafe {
             let tcp = &self.tcp_head as *const tcphdr as *const u8;
             for e in 0..size_of::<tcphdr>() {
-                back.push(*tcp.offset(e as isize))
+                self.data_vec.push(*tcp.offset(e as isize))
             }
         };
 
-        for x in self.data.to_data() {
-            back.push(*x)
+        for x in self.data.as_bytes() {
+            self.data_vec.push(*x)
         }
+
+        self.data_vec.as_ptr() as *const std::os::raw::c_void
+    }
+
+    #[inline]
+    pub fn size(&self) -> usize {
+        size_of::<iphdr>() + size_of::<tcphdr>() + self.data.to_length()
     }
 
     pub fn syn_packet(&mut self) {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
         }
-        self.check();
-    }
-
-    pub fn data_length(&self) -> usize {
-        self.data.to_length()
     }
 
     #[allow(dead_code)]
-    pub fn change_data(&mut self, data: T) {
-        self.data = data;
-        self.check();
+    pub fn change_data<T: ToCstring + ToLength>(&mut self, data: T) -> Result<(), String> {
+        self.data = data.to_cstring().map_err(|e| e.to_string())?;
+        Ok(())
     }
 
     fn get_tcp_check(&self) -> u16 {
@@ -76,7 +74,7 @@ impl<T: ToData + ToLength> TCPPacket<T> {
             dest_address: self.ip_head.daddr,
             placeholder: 0,
             protocol: self.ip_head.protocol,
-            tcp_length: (size_of::<tcphdr>() + self.data.to_length()) as u16
+            tcp_length: unsafe { htonl((size_of::<tcphdr>() + self.data.to_length()) as u32) } as u16
         };
 
         #[allow(dead_code)]
@@ -97,7 +95,7 @@ impl<T: ToData + ToLength> TCPPacket<T> {
     }
 
     fn get_ip_check(&self) -> u16 {
-        let ip_check_pointer = self as *const TCPPacket<T> as *const u8;
+        let ip_check_pointer = self as *const TCPPacket as *const u8;
 
         Self::checksum(ip_check_pointer, self.ip_head.tot_len as usize)
     }
@@ -105,12 +103,17 @@ impl<T: ToData + ToLength> TCPPacket<T> {
     #[inline]
     #[allow(unused_unsafe)]
     fn check(&mut self) {
+        self.ip_head.check = 0;
+        self.ip_head.check = {
+            let t = self.get_ip_check();
+            println!("iphead check: {}", t);
+            t
+        };
+
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
         }
-        self.ip_head.check = 0;
-        self.ip_head.check = self.get_ip_check();
     }
 
     #[inline]
