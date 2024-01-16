@@ -18,7 +18,7 @@ impl Display for TCPPacket {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{{\n\tTcpHead: {}\n\tIPHead: {}\n}}",
+            "{{\n\tsend ip head: {}\n\tsend tcp head: {}\n}}",
             self.ip_head,
             self.tcp_head
         )
