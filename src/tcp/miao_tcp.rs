@@ -1,4 +1,4 @@
-use std::ffi::{c_void, CString};
+use std::ffi::CString;
 use std::mem::size_of;
 
 use crate::raw_bindings::raw_bindings::{htonl, iphdr, tcphdr};
@@ -14,21 +14,32 @@ pub struct TCPPacket {
 }
 
 impl TCPPacket {
-    pub fn default<A: ToAddress, T: ToCstring + ToLength>(address: A, data: T, source_port: u16) -> Result<TCPPacket, String> {
-        let (port, addr) = address.to_address().ok_or("Invalid address")?;
+    pub fn syn_packet(&mut self) {
+        unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
+        }
+    }
+}
+
+impl TCPPacket {
+    pub fn default<A: ToAddress, T: ToCstring + ToLength>(destination_address: A, data: T, source_port: u16) -> Result<TCPPacket, String> {
+        let (port, addr) = destination_address.to_address().ok_or("Invalid address")?;
 
         Ok(TCPPacket {
             ip_head: iphdr::default(data.to_length(), "127.0.0.1", addr),
             tcp_head: tcphdr::default(source_port, port),
             data: data.to_cstring().map_err(|e| e.to_string())?,
-            data_vec: Vec::with_capacity(size_of::<Self>())
+            data_vec: Vec::with_capacity(size_of::<iphdr>() + size_of::<tcphdr>())
         })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn as_ptr(&mut self) -> *const c_void {
+    pub fn as_ptr(&mut self) -> *const u8 {
         self.check();
+        self.get_ptr()
+    }
 
+    #[allow(clippy::wrong_self_convention)]
+    fn get_ptr(&mut self) -> *const u8 {
         self.data_vec.clear();
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
@@ -48,7 +59,7 @@ impl TCPPacket {
             self.data_vec.push(*x)
         }
 
-        self.data_vec.as_ptr() as *const std::os::raw::c_void
+        self.data_vec.as_ptr()
     }
 
     #[inline]
@@ -56,16 +67,27 @@ impl TCPPacket {
         size_of::<iphdr>() + size_of::<tcphdr>() + self.data.to_length()
     }
 
-    pub fn syn_packet(&mut self) {
-        unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
-        }
-    }
-
     #[allow(dead_code)]
     pub fn change_data<T: ToCstring + ToLength>(&mut self, data: T) -> Result<(), String> {
         self.data = data.to_cstring().map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    #[inline]
+    #[allow(unused_unsafe)]
+    fn check(&mut self) {
+        unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
+        }
+
+        self.ip_head.check = 0;
+        self.ip_head.check = {
+            let t = self.get_ip_check();
+            // let t = 0;
+            println!("iphead check: {}", t);
+            t
+        };
     }
 
     fn get_tcp_check(&self) -> u16 {
@@ -94,26 +116,8 @@ impl TCPPacket {
         Self::checksum(tcp_check_pointer, tcp_check_len)
     }
 
-    fn get_ip_check(&self) -> u16 {
-        let ip_check_pointer = self as *const TCPPacket as *const u8;
-
-        Self::checksum(ip_check_pointer, self.ip_head.tot_len as usize)
-    }
-
-    #[inline]
-    #[allow(unused_unsafe)]
-    fn check(&mut self) {
-        self.ip_head.check = 0;
-        self.ip_head.check = {
-            let t = self.get_ip_check();
-            println!("iphead check: {}", t);
-            t
-        };
-
-        unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
-        }
+    fn get_ip_check(&mut self) -> u16 {
+        Self::checksum(self.get_ptr(), self.len())
     }
 
     #[inline]

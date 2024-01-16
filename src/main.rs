@@ -49,8 +49,8 @@ async fn main() {
     tokio::spawn(async move {
         let mut reader = BufReader::new(io::stdin());
         loop {
-            read_user_input(&mut reader).await.unwrap();
             send_packet(socket, port).await;
+            read_user_input(&mut reader).await.unwrap();
         }
     }).await.unwrap();
 
@@ -139,7 +139,7 @@ async fn send_packet(socket: c_int, port: u16) {
     unsafe {
         let sent_size = sendto(
             socket,
-            packet.as_ptr(),
+            packet.as_ptr() as *const c_void,
             packet.len(),
             0,
             &sockaddr_to as *const sockaddr_in as *const sockaddr,
