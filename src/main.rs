@@ -12,7 +12,7 @@ use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level, warn};
 
 use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
-use crate::tcp::miao_tcp::TCPPacket;
+use crate::tcp::tcp_packet::TCPPacket;
 
 mod raw_bindings;
 mod tcp;
@@ -110,7 +110,7 @@ async fn receive_packet(socket: c_int, port: u16) {
 
 async fn send_packet(socket: c_int, port: u16) {
     // let data = CString::new("miao~").unwrap();
-    let data = "miao~";
+    let data = "miao!";
 
     let sockaddr_to = unsafe {
         let mut addr = sockaddr_in {
@@ -146,13 +146,7 @@ async fn send_packet(socket: c_int, port: u16) {
             size_of::<sockaddr>() as u32
         );
 
-        let mut string = String::new();
-        string.push_str("Send: {\n");
-        string.push_str(format!(" ip head to send: {}\n", packet.ip_head).as_str());
-        string.push_str(format!(" tcp head to send: {}\n", packet.tcp_head).as_str());
-        string.push_str(format!(" Send packet with size: {}\n", sent_size).as_str());
-        string.push_str("}\n");
-        info!("{}", string);
+        info!("Send: {}, with size: {}", packet, sent_size);
     }
 }
 

@@ -1,16 +1,28 @@
 use std::ffi::CString;
+use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
-use crate::raw_bindings::raw_bindings::{htonl, iphdr, tcphdr};
+use crate::raw_bindings::raw_bindings::{htons, iphdr, tcphdr};
 use crate::tcp::data::PseudoHeader;
 use crate::tcp::util::{ToAddress, ToCstring, ToLength};
 
 pub struct TCPPacket {
-    pub ip_head: iphdr,
-    pub tcp_head: tcphdr,
+    ip_head: iphdr,
+    tcp_head: tcphdr,
 
     data: CString,
     data_vec: Vec<u8>
+}
+
+impl Display for TCPPacket {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{\n\tTcpHead: {}\n\tIPHead: {}\n}}",
+            self.ip_head,
+            self.tcp_head
+        )
+    }
 }
 
 impl TCPPacket {
@@ -29,7 +41,7 @@ impl TCPPacket {
             ip_head: iphdr::default(data.to_length(), "127.0.0.1", addr),
             tcp_head: tcphdr::default(source_port, port),
             data: data.to_cstring().map_err(|e| e.to_string())?,
-            data_vec: Vec::with_capacity(size_of::<iphdr>() + size_of::<tcphdr>())
+            data_vec: Vec::with_capacity(size_of::<iphdr>() + size_of::<tcphdr>() + data.to_length())
         })
     }
 
@@ -41,22 +53,21 @@ impl TCPPacket {
     #[allow(clippy::wrong_self_convention)]
     fn get_ptr(&mut self) -> *const u8 {
         self.data_vec.clear();
+        let mut offset = 0;
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
-            for e in 0..size_of::<iphdr>() {
-                self.data_vec.push(*ip.offset(e as isize))
-            }
+            std::ptr::copy(ip, self.data_vec.as_mut_ptr().offset(offset), size_of::<iphdr>());
+            offset += size_of::<iphdr>() as isize;
         };
 
         unsafe {
             let tcp = &self.tcp_head as *const tcphdr as *const u8;
-            for e in 0..size_of::<tcphdr>() {
-                self.data_vec.push(*tcp.offset(e as isize))
-            }
+            std::ptr::copy(tcp, self.data_vec.as_mut_ptr().offset(offset), size_of::<tcphdr>());
+            offset += size_of::<tcphdr>() as isize;
         };
 
-        for x in self.data.as_bytes() {
-            self.data_vec.push(*x)
+        unsafe {
+            std::ptr::copy(self.data.as_ptr() as *const u8, self.data_vec.as_mut_ptr().offset(offset), self.data.count_bytes());
         }
 
         self.data_vec.as_ptr()
@@ -84,7 +95,6 @@ impl TCPPacket {
         self.ip_head.check = 0;
         self.ip_head.check = {
             let t = self.get_ip_check();
-            // let t = 0;
             println!("iphead check: {}", t);
             t
         };
@@ -96,24 +106,52 @@ impl TCPPacket {
             dest_address: self.ip_head.daddr,
             placeholder: 0,
             protocol: self.ip_head.protocol,
-            tcp_length: unsafe { htonl((size_of::<tcphdr>() + self.data.to_length()) as u32) } as u16
+            tcp_length: unsafe {
+                htons((size_of::<tcphdr>() + self.data.to_length())as u16)
+            }
         };
 
-        #[allow(dead_code)]
-        struct TCPCheck {
-            pseudo_header: PseudoHeader,
-            tcp_header: tcphdr,
-        }
+        let vec = unsafe {
+            let mut vec: Vec<u8> = Vec::with_capacity(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length());
+            let mut offset = 0;
 
-        let tcp_check = TCPCheck {
-            pseudo_header,
-            tcp_header: self.tcp_head,
+            //第一部分：伪头
+            std::ptr::copy(
+                &pseudo_header as *const PseudoHeader as *const u8,
+                vec.as_mut_ptr().offset(offset),
+                size_of::<PseudoHeader>()
+            );
+            offset += size_of::<PseudoHeader>() as isize;
+
+            //第一部分：TCP头
+            std::ptr::copy(
+                &self.tcp_head as *const tcphdr as *const u8,
+                vec.as_mut_ptr().offset(offset),
+                size_of::<tcphdr>()
+            );
+            offset += size_of::<tcphdr>() as isize;
+
+            //第一部分：数据报
+            std::ptr::copy(self.data.as_ptr() as *const u8, vec.as_mut_ptr().offset(offset), self.data.count_bytes());
+
+            vec
         };
+        //
+        // #[allow(dead_code)]
+        // struct TCPCheck {
+        //     pseudo_header: PseudoHeader,
+        //     tcp_header: tcphdr,
+        // }
+        //
+        // let tcp_check = TCPCheck {
+        //     pseudo_header,
+        //     tcp_header: self.tcp_head,
+        // };
+        //
+        // let tcp_check_pointer = &tcp_check as *const TCPCheck as *const u8;
+        // let tcp_check_len = size_of::<TCPCheck>() + self.data.to_length();
 
-        let tcp_check_pointer = &tcp_check as *const TCPCheck as *const u8;
-        let tcp_check_len = size_of::<TCPCheck>() + self.data.to_length();
-
-        Self::checksum(tcp_check_pointer, tcp_check_len)
+        Self::checksum(vec.as_ptr(), vec.len())
     }
 
     fn get_ip_check(&mut self) -> u16 {
