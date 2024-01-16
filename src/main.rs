@@ -10,11 +10,14 @@ use rand::random;
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 
-use crate::raw_bindings::raw_bindings::{AF_INET, getsockopt, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SO_ERROR, SOCK_RAW, sockaddr, sockaddr_in, socket, socklen_t, SOL_SOCKET, tcphdr};
+use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, IP_HDRINCL, iphdr, IPPROTO_IP, IPPROTO_TCP, recvfrom, sendto, setsockopt, SOCK_RAW, sockaddr, sockaddr_in, socket, tcphdr};
 use crate::tcp::miao_tcp::TCPPacket;
 
 mod raw_bindings;
 mod tcp;
+
+const REMOTE_ADDRESS: &str = "127.0.0.1";
+const REMOTE_PORT: u16 = 65534;
 
 #[tokio::main]
 async fn main() {
@@ -104,17 +107,18 @@ async fn receive_packet(socket: c_int, port: u16) {
     }
 }
 
+
 async fn send_packet(socket: c_int, port: u16) {
     let data = CString::new("miao~").unwrap();
 
-    let sockaddr_in = unsafe {
+    let sockaddr_to = unsafe {
         let mut addr = sockaddr_in {
             sin_family: AF_INET as u16,
-            sin_port: htons(65534),
+            sin_port: htons(REMOTE_PORT),
             ..Default::default()
         };
 
-        let ip = CString::new("127.0.0.1").unwrap();
+        let ip = CString::new(REMOTE_ADDRESS).unwrap();
         let res = inet_pton(AF_INET as c_int, ip.as_ptr(), &mut addr.sin_addr as *mut in_addr as *mut c_void);
         if res != 1 {
             panic!("error on inet_pton: {}", res)
@@ -123,7 +127,7 @@ async fn send_packet(socket: c_int, port: u16) {
     };
 
     let mut packet = {
-        let mut packet = TCPPacket::default("127.0.0.1:65534", data, port).unwrap();
+        let mut packet = TCPPacket::default(format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT).as_str(), data, port).unwrap();
         packet.syn_packet();
         packet
     };
@@ -134,21 +138,9 @@ async fn send_packet(socket: c_int, port: u16) {
             packet.new_bytes().as_ptr() as *const c_void,
             size_of::<iphdr>() + size_of::<tcphdr>() + packet.data_length(),
             0,
-            &sockaddr_in as *const sockaddr_in as *const sockaddr,
+            &sockaddr_to as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
         );
-
-        let mut a = i32::MAX;
-        let mut b = 4;
-        let opt = getsockopt(
-            socket,
-            SOL_SOCKET as c_int,
-            SO_ERROR as c_int,
-            &mut a as *mut i32 as *mut c_void,
-            &mut b as *mut i32 as *mut socklen_t,
-        );
-        println!("getsockopt return: {}", opt);
-        println!("getsockopt value: {}", a);
 
         let mut string = String::new();
         string.push_str("Send: {\n");
