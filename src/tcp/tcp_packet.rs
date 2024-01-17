@@ -46,13 +46,18 @@ impl TCPPacket {
     }
 
     pub fn as_ptr(&mut self) -> *const u8 {
+        self.init_data_vec();
         self.check();
-        self.get_ptr()
+        self.data_vec.as_ptr()
     }
 
-    fn get_ptr(&mut self) -> *const u8 {
-        self.data_vec.clear();
+    fn init_data_vec(&mut self) -> *const u8 {
         let mut offset = 0;
+
+        unsafe {
+            self.data_vec.set_len(self.len())
+        };
+
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
             std::ptr::copy(ip, self.data_vec.as_mut_ptr().offset(offset), size_of::<iphdr>());
@@ -99,7 +104,7 @@ impl TCPPacket {
         };
     }
 
-    fn get_tcp_check(&self) -> u16 {
+    fn get_tcp_check(&mut self) -> u16 {
         let pseudo_header = PseudoHeader {
             source_address: self.ip_head.saddr,
             dest_address: self.ip_head.daddr,
@@ -114,6 +119,10 @@ impl TCPPacket {
             let mut vec: Vec<u8> = Vec::with_capacity(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length());
             let mut offset = 0;
 
+            unsafe {
+                vec.set_len(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length())
+            };
+
             //第一部分：伪头
             std::ptr::copy(
                 &pseudo_header as *const PseudoHeader as *const u8,
@@ -122,7 +131,7 @@ impl TCPPacket {
             );
             offset += size_of::<PseudoHeader>() as isize;
 
-            //第一部分：TCP头
+            //第二部分：TCP头
             std::ptr::copy(
                 &self.tcp_head as *const tcphdr as *const u8,
                 vec.as_mut_ptr().offset(offset),
@@ -130,31 +139,17 @@ impl TCPPacket {
             );
             offset += size_of::<tcphdr>() as isize;
 
-            //第一部分：数据报
+            //第三部分：数据报
             std::ptr::copy(self.data.as_ptr() as *const u8, vec.as_mut_ptr().offset(offset), self.data.count_bytes());
 
             vec
         };
-        //
-        // #[allow(dead_code)]
-        // struct TCPCheck {
-        //     pseudo_header: PseudoHeader,
-        //     tcp_header: tcphdr,
-        // }
-        //
-        // let tcp_check = TCPCheck {
-        //     pseudo_header,
-        //     tcp_header: self.tcp_head,
-        // };
-        //
-        // let tcp_check_pointer = &tcp_check as *const TCPCheck as *const u8;
-        // let tcp_check_len = size_of::<TCPCheck>() + self.data.to_length();
 
         Self::checksum(vec.as_ptr(), vec.len())
     }
 
     fn get_ip_check(&mut self) -> u16 {
-        Self::checksum(self.get_ptr(), self.len())
+        Self::checksum(self.init_data_vec(), self.len())
     }
 
     #[inline]
