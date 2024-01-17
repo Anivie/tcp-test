@@ -113,7 +113,10 @@ impl TCPPacket {
         };
 
         let vec = unsafe {
-            let mut vec: Vec<u8> = Vec::with_capacity(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length());
+            let len = size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length();
+            let mut vec: Vec<u8> = Vec::with_capacity(len);
+            vec.resize(len, 0);
+
             let mut offset = 0;
 
             //第一部分：伪头
@@ -148,7 +151,7 @@ impl TCPPacket {
         unsafe {
             while i < len {
                 // 将字节组合成16位整数
-                let word = ((*buffer.add(i) as u32) << 8) | (*buffer.add(i + 1)) as u32;
+                let word = ((*buffer.add(i + 1) as u32) << 8) | (*buffer.add(i)) as u32;
                 sum = sum + word;
                 i = i + 2;
             }
