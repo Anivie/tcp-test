@@ -7,8 +7,10 @@
 use std::ffi::{CStr, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
+
 use rand::random;
-use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, ntohs, sockaddr_in, tcphdr};
+
+use crate::raw_bindings::raw_bindings::{htons, in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, ntohs, sockaddr_in, tcphdr};
 
 impl iphdr {
     #[inline]
@@ -20,7 +22,7 @@ impl iphdr {
             iphdr {
                 tos: 0,
                 tot_len: (size_of::<iphdr>() + size_of::<tcphdr>() + data_len) as u16,
-                id: random::<u16>().to_be(),
+                id: htons(random()),
                 frag_off: 0,
                 ttl: 64,
                 protocol: IPPROTO_TCP as u8,
@@ -124,20 +126,22 @@ impl Display for iphdr {
         };
         let daddr = c_str.to_str().unwrap();
 
-        write!(
-            f,
-            "[check: {}, daddr: {}, frag_off: {}, id: {}, ihl: {}, protocol: {}, saddr: {}, tos: {}, tot_len: {}, ttl: {}, version: {}]",
-            self.check,
-            daddr,
-            self.frag_off,
-            self.id,
-            self.ihl(),
-            self.protocol,
-            saddr,
-            self.tos,
-            self.tot_len,
-            self.ttl,
-            self.version()
-        )
+        unsafe {
+            write!(
+                f,
+                "[check: {}, daddr: {}, frag_off: {}, id: {}, ihl: {}, protocol: {}, saddr: {}, tos: {}, tot_len: {}, ttl: {}, version: {}]",
+                self.check,
+                daddr,
+                self.frag_off,
+                ntohs(self.id),
+                self.ihl(),
+                self.protocol,
+                saddr,
+                self.tos,
+                self.tot_len,
+                self.ttl,
+                self.version()
+            )
+        }
     }
 }
