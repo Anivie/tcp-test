@@ -2,6 +2,8 @@ use std::ffi::{c_int, CString};
 use std::mem::size_of;
 use std::os::raw::c_void;
 
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use bytes::BytesMut;
 use tracing::{info, warn};
 
@@ -95,13 +97,19 @@ pub async fn send_packet(socket: c_int, port: u16) {
         packet.syn_packet();
         packet
     };
+    let ptr = packet.as_ptr();
+
     // let mut packet_: Vec<u8> = vec![];
-    // BASE64_STANDARD.decode_vec("RQA8AAAAAABABj8nfwAAAX8AAAE4Mf/+QsKqTAAAAACgAhbQH4cAAAIEADAEAgAAAAAAAAAAAAAAAAAA", &mut packet_).unwrap();
+    // BASE64_STANDARD.decode_vec("RQA8AAAAAABABj8nfwAAAX8AAAFJmf/+Fc/DtgAAAACgAhbQJ94AAAAAAAAAAAAAAAAAAAAAAAAAAAAA", &mut packet_).unwrap();
+
+    let mut string = String::new();
+    unsafe { BASE64_STANDARD.encode_string(std::slice::from_raw_parts(ptr, packet.len()), &mut string); }
+    info!("Sent packet's base64: {}", string);
 
     unsafe {
         let sent_size = sendto(
             socket,
-            packet.as_ptr() as *const c_void,
+            ptr as *const c_void,
             packet.len(),
             0,
             &sockaddr_to as *const sockaddr_in as *const sockaddr,

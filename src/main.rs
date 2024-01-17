@@ -10,7 +10,7 @@ use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level};
 
 use crate::raw_bindings::raw_bindings::{AF_INET, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, socket};
-use crate::tcp::miao_function::{receive_packet, send_packet};
+use crate::tcp::main_loop::{receive_packet, send_packet};
 
 mod raw_bindings;
 mod tcp;
