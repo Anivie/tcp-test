@@ -50,7 +50,6 @@ impl TCPPacket {
         self.get_ptr()
     }
 
-    #[allow(clippy::wrong_self_convention)]
     fn get_ptr(&mut self) -> *const u8 {
         self.data_vec.clear();
         let mut offset = 0;

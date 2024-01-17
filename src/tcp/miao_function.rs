@@ -61,7 +61,6 @@ pub async fn receive_packet(socket: c_int, port: u16) {
 }
 
 pub async fn send_packet(socket: c_int, port: u16) {
-    // let data = CString::new("miao~").unwrap();
     let data = "miao!";
 
     let sockaddr_to = unsafe {
