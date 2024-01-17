@@ -51,7 +51,7 @@ pub async fn receive_packet(socket: c_int, port: u16) {
 
             let recv_port = ntohs(tcp_head.__bindgen_anon_1.__bindgen_anon_2.source);
             if recv_port == port {
-                info!("Received packet from me.");
+                info!("Received packet from me, thrown.");
                 continue;
             }else if recv_port != REMOTE_PORT {
                 info!("Received packet(from {}) is not listening TCP packet, thrown.", recv_port);
