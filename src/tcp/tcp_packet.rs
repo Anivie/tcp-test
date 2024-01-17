@@ -58,12 +58,6 @@ impl TCPPacket {
         let mut offset = 0;
 
         unsafe {
-            if self.data_vec.len() != self.len() {
-                self.data_vec.set_len(self.len())
-            }
-        }
-
-        unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
             std::ptr::copy(ip, self.data_vec.as_mut_ptr().offset(offset), size_of::<iphdr>());
             offset += size_of::<iphdr>() as isize;
@@ -127,10 +121,6 @@ impl TCPPacket {
         let vec = unsafe {
             let mut vec: Vec<u8> = Vec::with_capacity(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length());
             let mut offset = 0;
-
-            unsafe {
-                vec.set_len(size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length())
-            };
 
             //第一部分：伪头
             std::ptr::copy(
