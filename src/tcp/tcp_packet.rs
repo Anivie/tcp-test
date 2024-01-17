@@ -2,8 +2,6 @@ use std::ffi::CString;
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
-use tracing::info;
-
 use crate::raw_bindings::raw_bindings::{htons, iphdr, tcphdr};
 use crate::tcp::data::PseudoHeader;
 use crate::tcp::util::{ToAddress, ToCstring, ToLength};
@@ -78,25 +76,18 @@ impl TCPPacket {
     }
 
     #[inline]
+    #[allow(unused_unsafe)]
     pub fn tcp_check(&mut self) {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = {
-                let t = self.get_tcp_check();
-                info!("tcphead check: {}", t);
-                t
-            }
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
         }
     }
 
     #[inline]
     pub fn ip_check(&mut self) {
         self.ip_head.check = 0;
-        self.ip_head.check = {
-            let t = Self::checksum(self.data_vec.as_ptr(), self.len());
-            info!("tcphead check: {}", t);
-            t
-        }
+        self.ip_head.check = Self::checksum(self.data_vec.as_ptr(), self.len());
     }
 
     #[inline]
