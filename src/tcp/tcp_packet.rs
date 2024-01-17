@@ -47,17 +47,18 @@ impl TCPPacket {
         })
     }
 
+    #[inline]
     pub fn as_ptr(&mut self) -> *const u8 {
-        let mut offset = 0;
+        self.tcp_check();
+        self.calculate_data();
+        self.ip_check();
+        self.calculate_data();
+        self.data_vec.as_ptr()
+    }
 
-        unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = {
-                let t = self.get_tcp_check();
-                info!("tcphead check: {}", t);
-                t
-            };
-        }
+    fn calculate_data(&mut self) {
+        let mut offset = 0;
+        self.data_vec.resize(self.len(), 0);
 
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
@@ -74,11 +75,28 @@ impl TCPPacket {
         unsafe {
             std::ptr::copy(self.data.as_ptr() as *const u8, self.data_vec.as_mut_ptr().offset(offset), self.data.count_bytes());
         }
+    }
 
+    #[inline]
+    pub fn tcp_check(&mut self) {
+        unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = {
+                let t = self.get_tcp_check();
+                info!("tcphead check: {}", t);
+                t
+            }
+        }
+    }
+
+    #[inline]
+    pub fn ip_check(&mut self) {
         self.ip_head.check = 0;
-        self.ip_head.check = Self::checksum(self.data_vec.as_ptr(), self.len());
-
-        self.data_vec.as_ptr()
+        self.ip_head.check = {
+            let t = Self::checksum(self.data_vec.as_ptr(), self.len());
+            info!("tcphead check: {}", t);
+            t
+        }
     }
 
     #[inline]
