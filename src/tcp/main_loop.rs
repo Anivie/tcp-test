@@ -2,13 +2,11 @@ use std::ffi::{c_int, CString};
 use std::mem::size_of;
 use std::os::raw::c_void;
 
-use base64::Engine;
-use base64::prelude::BASE64_STANDARD;
 use bytes::BytesMut;
 use tracing::{info, warn};
 
 use crate::{REMOTE_ADDRESS, REMOTE_PORT};
-use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, inet_pton, iphdr, ntohs, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, iphdr, ntohs, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
 use crate::tcp::tcp_packet::TCPPacket;
 
 pub async fn receive_packet(socket: c_int, port: u16) {
@@ -42,7 +40,6 @@ pub async fn receive_packet(socket: c_int, port: u16) {
             )
         };
 
-
         let (ip_head, tcp_head) = unsafe {
             let ip_head = *(buffer.as_ptr() as *const iphdr);
             let tcp_head = *(buffer.as_ptr().offset(size_of::<iphdr>() as isize) as *const tcphdr);
@@ -70,46 +67,27 @@ pub async fn receive_packet(socket: c_int, port: u16) {
         string.push_str(format!("  received size: {}\n", receive_size).as_str());
         string.push_str("}\n");
         info!("{}", string);
+
+
     }
 }
 
-pub async fn send_packet(socket: c_int, port: u16) {
+pub async fn send_packet(socket: c_int, sockaddr_to: sockaddr_in, port: u16) {
     let data = "miao!";
 
-    let sockaddr_to = unsafe {
-        let mut addr = sockaddr_in {
-            sin_family: AF_INET as u16,
-            sin_port: htons(REMOTE_PORT),
-            ..Default::default()
-        };
-
-        let ip = CString::new(REMOTE_ADDRESS).unwrap();
-        let res = inet_pton(AF_INET as c_int, ip.as_ptr(), &mut addr.sin_addr as *mut in_addr as *mut c_void);
-        if res != 1 {
-            panic!("error on inet_pton: {}", res)
-        }
-        addr
-    };
-
-    let mut packet = {
-        let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
-        let mut packet = TCPPacket::default(address.as_str(), data, port).unwrap();
-        packet.syn_packet();
-        packet
-    };
-    let ptr = packet.as_ptr();
-
-    // let mut packet_: Vec<u8> = vec![];
-    // BASE64_STANDARD.decode_vec("RQA8AAAAAABABj8nfwAAAX8AAAFJmf/+Fc/DtgAAAACgAhbQJ94AAAAAAAAAAAAAAAAAAAAAAAAAAAAA", &mut packet_).unwrap();
-
+/*
     let mut string = String::new();
     unsafe { BASE64_STANDARD.encode_string(std::slice::from_raw_parts(ptr, packet.len()), &mut string); }
     info!("Sent packet's base64: {}", string);
+*/
+
+    let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
+    let mut packet = TCPPacket::default(address.as_str(), data, port).unwrap();
 
     unsafe {
         let sent_size = sendto(
             socket,
-            ptr as *const c_void,
+            packet.first_handshake(),
             packet.len(),
             0,
             &sockaddr_to as *const sockaddr_in as *const sockaddr,

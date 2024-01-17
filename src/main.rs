@@ -1,7 +1,7 @@
 #![feature(cstr_count_bytes)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
-use std::ffi::c_int;
+use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
 
 use rand::random;
@@ -9,7 +9,7 @@ use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level};
 
-use crate::raw_bindings::raw_bindings::{AF_INET, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, socket};
+use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
 use crate::tcp::main_loop::{receive_packet, send_packet};
 
 mod raw_bindings;
@@ -47,12 +47,28 @@ async fn main() {
         p
     };
 
+
+    let sockaddr_to = unsafe {
+        let mut addr = sockaddr_in {
+            sin_family: AF_INET as u16,
+            sin_port: htons(REMOTE_PORT),
+            ..Default::default()
+        };
+
+        let ip = CString::new(REMOTE_ADDRESS).unwrap();
+        let res = inet_pton(AF_INET as c_int, ip.as_ptr(), &mut addr.sin_addr as *mut in_addr as *mut c_void);
+        if res != 1 {
+            panic!("error on inet_pton: {}", res)
+        }
+        addr
+    };
+
     let receive_coroutine = tokio::spawn(receive_packet(socket, port));
 
     tokio::spawn(async move {
         let mut reader = BufReader::new(io::stdin());
         loop {
-            send_packet(socket, port).await;
+            send_packet(socket, sockaddr_to, port).await;
             read_user_input(&mut reader).await.unwrap();
         }
     }).await.unwrap();

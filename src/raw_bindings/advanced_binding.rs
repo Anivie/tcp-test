@@ -57,7 +57,7 @@ impl tcphdr {
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.source = source_port.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = destination_port.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = (random::<u32>() % 4294967295).to_be();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0u32.to_be();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0_u32.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 5840_u16.to_be();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_doff(5);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_fin(0);
@@ -95,16 +95,16 @@ impl Display for tcphdr {
     - Acknowledgement Number: {}\n\
     - URG: {}",
                     self.__bindgen_anon_1.__bindgen_anon_2.check,
-                    ntohs(self.__bindgen_anon_1.__bindgen_anon_2.dest),
-                    ntohs(self.__bindgen_anon_1.__bindgen_anon_2.source),
+                    self.__bindgen_anon_1.__bindgen_anon_2.dest.to_le(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.source.to_le(),
                     self.__bindgen_anon_1.__bindgen_anon_2.doff(),
                     self.__bindgen_anon_1.__bindgen_anon_2.fin(),
                     self.__bindgen_anon_1.__bindgen_anon_2.psh(),
                     self.__bindgen_anon_1.__bindgen_anon_2.rst(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.seq,
-                    self.__bindgen_anon_1.__bindgen_anon_2.syn(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.ack(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.ack_seq,
+                    self.__bindgen_anon_1.__bindgen_anon_2.seq.to_le(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.syn().to_le(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.ack().to_le(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_le(),
                     self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr,
                 )
             }

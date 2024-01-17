@@ -1,4 +1,4 @@
-use std::ffi::CString;
+use std::ffi::{c_void, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
@@ -26,10 +26,19 @@ impl Display for TCPPacket {
 }
 
 impl TCPPacket {
-    pub fn syn_packet(&mut self) {
+    pub fn first_handshake(&mut self) -> *const c_void {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
         }
+        self.as_ptr() as *const c_void
+    }
+
+    pub fn third_handshake(&mut self, syn: u32) -> *const c_void {
+        unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1_u32.to_be()as u16);
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = syn + 1;
+        }
+        self.as_ptr() as *const c_void
     }
 }
 
