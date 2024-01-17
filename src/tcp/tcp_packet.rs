@@ -2,6 +2,8 @@ use std::ffi::CString;
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
+use tracing::info;
+
 use crate::raw_bindings::raw_bindings::{htons, iphdr, tcphdr};
 use crate::tcp::data::PseudoHeader;
 use crate::tcp::util::{ToAddress, ToCstring, ToLength};
@@ -45,18 +47,21 @@ impl TCPPacket {
         })
     }
 
+    #[inline]
     pub fn as_ptr(&mut self) -> *const u8 {
-        self.init_data_vec();
+        self.init_data();
         self.check();
         self.data_vec.as_ptr()
     }
 
-    fn init_data_vec(&mut self) -> *const u8 {
+    fn init_data(&mut self) -> *const u8 {
         let mut offset = 0;
 
         unsafe {
-            self.data_vec.set_len(self.len())
-        };
+            if self.data_vec.len() != self.len() {
+                self.data_vec.set_len(self.len())
+            }
+        }
 
         unsafe {
             let ip = &self.ip_head as *const iphdr as *const u8;
@@ -93,13 +98,17 @@ impl TCPPacket {
     fn check(&mut self) {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = 0;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = self.get_tcp_check();
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.check = {
+                let t = self.get_tcp_check();
+                info!("tcphead check: {}", t);
+                t
+            };
         }
 
         self.ip_head.check = 0;
         self.ip_head.check = {
             let t = self.get_ip_check();
-            println!("iphead check: {}", t);
+            info!("iphead check: {}", t);
             t
         };
     }
@@ -149,10 +158,9 @@ impl TCPPacket {
     }
 
     fn get_ip_check(&mut self) -> u16 {
-        Self::checksum(self.init_data_vec(), self.len())
+        Self::checksum(self.init_data(), self.len())
     }
 
-    #[inline]
     fn checksum(buffer: *const u8, len: usize) -> u16 {
         let mut sum = 0u32;
         let mut i = 0;
