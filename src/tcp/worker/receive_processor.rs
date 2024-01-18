@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use log::info;
 use tokio::sync::watch::Receiver;
 
 use crate::{REMOTE_ADDRESS, REMOTE_PORT};
@@ -13,6 +14,7 @@ impl Controller {
             let receiver = receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
 
             if receiver.syn().to_le() == 1 && receiver.ack().to_le() == 1 {
+                info!("发现二次握手包，正在发送三次握手包……");
                 let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
                 let mut packet = TCPPacket::default::<_, String>(address, None, self.port).unwrap();
 
