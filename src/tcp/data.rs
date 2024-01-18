@@ -1,3 +1,7 @@
+use std::ffi::c_int;
+
+use crate::raw_bindings::raw_bindings::{iphdr, sockaddr_in, tcphdr};
+
 #[derive(Debug)]
 pub struct PseudoHeader {
     pub source_address: u32,
@@ -7,8 +11,16 @@ pub struct PseudoHeader {
     pub tcp_length: u16,
 }
 
-/*pub struct DataGram<'a> {
+#[derive(Default)]
+pub struct ReceiveData {
     pub iphdr: iphdr,
     pub tcphdr: tcphdr,
-    pub data: &'a [u8],
-}*/
+    pub data: String,
+}
+
+#[derive(Copy, Clone)]
+pub struct Controller {
+    pub socket: c_int,
+    pub port: u16,
+    pub sockaddr_to: sockaddr_in,
+}

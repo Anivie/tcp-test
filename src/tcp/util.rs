@@ -1,4 +1,7 @@
 use std::ffi::{CString, NulError};
+use std::fmt::{Display, Formatter};
+
+use crate::tcp::data::ReceiveData;
 
 pub trait ToAddress {
     fn to_address(&self) -> Option<(u16, &str)>;
@@ -47,5 +50,17 @@ impl ToCstring for &str {
 impl ToCstring for String {
     fn to_cstring(&self) -> Result<CString, NulError> {
         Ok(CString::new(self.as_bytes())?)
+    }
+}
+
+impl Display for ReceiveData {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[IP head: {}, TCP head: {}, Data: {}",
+            self.iphdr,
+            self.tcphdr,
+            self.data,
+        )
     }
 }

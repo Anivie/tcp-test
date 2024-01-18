@@ -1,4 +1,5 @@
 #![feature(cstr_count_bytes)]
+#![feature(let_chains)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
 use std::ffi::{c_int, CString};
@@ -10,6 +11,7 @@ use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level};
 
 use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
+use crate::tcp::data::Controller;
 use crate::tcp::main_loop::{receive_packet, send_packet};
 
 mod raw_bindings;
@@ -47,7 +49,6 @@ async fn main() {
         p
     };
 
-
     let sockaddr_to = unsafe {
         let mut addr = sockaddr_in {
             sin_family: AF_INET as u16,
@@ -63,12 +64,18 @@ async fn main() {
         addr
     };
 
-    let receive_coroutine = tokio::spawn(receive_packet(socket, port));
+    let control = Controller {
+        socket,
+        port,
+        sockaddr_to,
+    };
+
+    let receive_coroutine = tokio::spawn(receive_packet(control));
 
     tokio::spawn(async move {
         let mut reader = BufReader::new(io::stdin());
         loop {
-            send_packet(socket, sockaddr_to, port).await;
+            send_packet(control).await;
             read_user_input(&mut reader).await.unwrap();
         }
     }).await.unwrap();
