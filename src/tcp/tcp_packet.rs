@@ -2,9 +2,9 @@ use std::ffi::{c_void, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
-use crate::raw_bindings::raw_bindings::{htons, iphdr, tcphdr};
+use crate::raw_bindings::raw_bindings::{iphdr, tcphdr};
 use crate::tcp::data::PseudoHeader;
-use crate::tcp::util::{ToAddress, ToCstring, ToLength};
+use crate::tcp::util::{ChangingOrderSizes, ToAddress};
 
 pub struct TCPPacket {
     ip_head: iphdr,
@@ -30,37 +30,46 @@ impl TCPPacket {
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
         }
-        self.as_ptr() as *const c_void
+        self.as_ptr()
     }
 
-    pub fn third_handshake(&mut self, syn: u32) -> *const c_void {
+    pub fn third_handshake(&mut self, response_ack: u32, response_seq: u32) -> *const c_void {
         unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1_u32.to_be()as u16);
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = syn + 1;
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1);
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq = response_ack;
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq.to_host() + 1).to_network();
         }
-        self.as_ptr() as *const c_void
+
+        self.as_ptr()
     }
 }
 
 impl TCPPacket {
-    pub fn default<A: ToAddress, T: ToCstring + ToLength>(destination_address: A, data: T, source_port: u16) -> Result<TCPPacket, String> {
+    pub fn default<A: ToAddress, T: Into<Vec<u8>>>(destination_address: A, data: Option<T>, source_port: u16) -> Result<TCPPacket, String> {
         let (port, addr) = destination_address.to_address().ok_or("Invalid address")?;
 
+        let data = match data {
+            None => { CString::default() }
+            Some(data) => { CString::new(data).map_err(|e| e.to_string())? }
+        };
+
+        let data_len = data.count_bytes();
+
         Ok(TCPPacket {
-            ip_head: iphdr::default(data.to_length(), "127.0.0.1", addr),
+            ip_head: iphdr::default(data_len, "127.0.0.1", addr),
             tcp_head: tcphdr::default(source_port, port),
-            data: data.to_cstring().map_err(|e| e.to_string())?,
-            data_vec: Vec::with_capacity(size_of::<iphdr>() + size_of::<tcphdr>() + data.to_length())
+            data,
+            data_vec: Vec::with_capacity(size_of::<iphdr>() + size_of::<tcphdr>() + data_len)
         })
     }
 
     #[inline]
-    pub fn as_ptr(&mut self) -> *const u8 {
+    pub fn as_ptr(&mut self) -> *const c_void {
         self.tcp_check();
         self.calculate_data();
         self.ip_check();
         self.calculate_data();
-        self.data_vec.as_ptr()
+        self.data_vec.as_ptr() as *const c_void
     }
 
     fn calculate_data(&mut self) {
@@ -101,12 +110,12 @@ impl TCPPacket {
 
     #[inline]
     pub fn len(&self) -> usize {
-        size_of::<iphdr>() + size_of::<tcphdr>() + self.data.to_length()
+        size_of::<iphdr>() + size_of::<tcphdr>() + self.data.count_bytes()
     }
 
     #[allow(dead_code)]
-    pub fn change_data<T: ToCstring + ToLength>(&mut self, data: T) -> Result<(), String> {
-        self.data = data.to_cstring().map_err(|e| e.to_string())?;
+    pub fn change_data<T: Into<Vec<u8>>>(&mut self, data: T) -> Result<(), String> {
+        self.data = CString::new(data).map_err(|e| e.to_string())?;
         Ok(())
     }
 
@@ -116,13 +125,11 @@ impl TCPPacket {
             dest_address: self.ip_head.daddr,
             placeholder: 0,
             protocol: self.ip_head.protocol,
-            tcp_length: unsafe {
-                htons((size_of::<tcphdr>() + self.data.to_length())as u16)
-            }
+            tcp_length: ((size_of::<tcphdr>() + self.data.count_bytes())as u16).to_network()
         };
 
         let vec = unsafe {
-            let len = size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.to_length();
+            let len = size_of::<PseudoHeader>() + size_of::<tcphdr>() + self.data.count_bytes();
             let mut vec: Vec<u8> = Vec::with_capacity(len);
             vec.resize(len, 0);
 

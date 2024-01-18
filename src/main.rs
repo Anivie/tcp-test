@@ -10,9 +10,10 @@ use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level};
 
-use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
+use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
 use crate::tcp::data::Controller;
 use crate::tcp::main_loop::{receive_packet, send_packet};
+use crate::tcp::util::ChangingOrderSizes;
 
 mod raw_bindings;
 mod tcp;
@@ -44,7 +45,7 @@ async fn main() {
     };
 
     let port: u16 = {
-        let p = random();
+        let p: u16 = random();
         info!("Start with port: {}", p);
         p
     };
@@ -52,7 +53,7 @@ async fn main() {
     let sockaddr_to = unsafe {
         let mut addr = sockaddr_in {
             sin_family: AF_INET as u16,
-            sin_port: htons(REMOTE_PORT),
+            sin_port: REMOTE_PORT.to_network(),
             ..Default::default()
         };
 

@@ -1,55 +1,24 @@
-use std::ffi::{CString, NulError};
 use std::fmt::{Display, Formatter};
 
+use crate::raw_bindings::raw_bindings::{htonl, htons, ntohl, ntohs};
 use crate::tcp::data::ReceiveData;
 
 pub trait ToAddress {
     fn to_address(&self) -> Option<(u16, &str)>;
 }
 
-impl ToAddress for &str {
+impl<T: AsRef<str>> ToAddress for T {
     fn to_address(&self) -> Option<(u16, &str)> {
-        let parts: Vec<&str> = self.split(':').collect();
+        let parts: Vec<&str> = self.as_ref().split(':').collect();
         if parts.is_empty() { return None; }
         if parts.len() == 1 { return None; }
 
         let addr = parts[0];
-        let port = parts[1].parse::<u16>().unwrap();
+        let port = match parts[1].parse::<u16>() {
+            Ok(p) => { p }
+            Err(_) => { return None }
+        };
         Some((port, addr))
-    }
-}
-
-pub trait ToLength {
-    fn to_length(&self) -> usize;
-}
-impl ToLength for &str {
-    fn to_length(&self) -> usize {
-        CString::new(*self).unwrap().count_bytes()
-    }
-}
-impl ToLength for String {
-    fn to_length(&self) -> usize {
-        CString::new(self.as_bytes()).unwrap().count_bytes()
-    }
-}
-impl ToLength for CString {
-    fn to_length(&self) -> usize {
-        self.as_bytes().len()
-    }
-}
-
-pub trait ToCstring {
-    fn to_cstring(&self) -> Result<CString, NulError>;
-}
-
-impl ToCstring for &str {
-    fn to_cstring(&self) -> Result<CString, NulError> {
-        Ok(CString::new(*self)?)
-    }
-}
-impl ToCstring for String {
-    fn to_cstring(&self) -> Result<CString, NulError> {
-        Ok(CString::new(self.as_bytes())?)
     }
 }
 
@@ -57,10 +26,45 @@ impl Display for ReceiveData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "[IP head: {}, TCP head: {}, Data: {}",
+            "{{\nIP head: {},\n TCP head: {},\n Data: {}\n]}}",
             self.iphdr,
             self.tcphdr,
             self.data,
         )
+    }
+}
+
+pub trait ChangingOrderSizes<T> {
+    #[inline]
+    fn to_network(self) -> T;
+    #[inline]
+    fn to_host(self) -> T;
+}
+
+impl ChangingOrderSizes<u16> for u16{
+    fn to_network(self) -> u16 {
+        unsafe {
+            htons(self)
+        }
+    }
+
+    fn to_host(self) -> u16 {
+        unsafe {
+            ntohs(self)
+        }
+    }
+}
+
+impl ChangingOrderSizes<u32> for u32{
+    fn to_network(self) -> u32 {
+        unsafe {
+            htonl(self)
+        }
+    }
+
+    fn to_host(self) -> u32 {
+        unsafe {
+            ntohl(self)
+        }
     }
 }

@@ -1,15 +1,17 @@
 use std::ffi::CString;
 use std::mem::size_of;
 use std::os::raw::c_void;
+use std::sync::Arc;
 
 use bytes::BytesMut;
 use tokio::sync::watch;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 use crate::{REMOTE_ADDRESS, REMOTE_PORT};
-use crate::raw_bindings::raw_bindings::{AF_INET, htons, in_addr, inet_addr, iphdr, ntohs, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
 use crate::tcp::data::{Controller, ReceiveData};
 use crate::tcp::tcp_packet::TCPPacket;
+use crate::tcp::util::ChangingOrderSizes;
 
 pub async fn receive_packet(controller: Controller) {
     let mut sockaddr_in = unsafe {
@@ -17,7 +19,7 @@ pub async fn receive_packet(controller: Controller) {
 
         sockaddr_in {
             sin_family: AF_INET as u16,
-            sin_port: htons(controller.port),
+            sin_port: controller.port.to_network(),
             sin_addr: in_addr {
                 s_addr: inet_addr(addr.as_ptr()),
             },
@@ -25,19 +27,29 @@ pub async fn receive_packet(controller: Controller) {
         }
     };
 
-    let mut addr_len = size_of::<sockaddr>() as u32;
-
-    let mut buffer = BytesMut::with_capacity(4096);
-    buffer.resize(4096, 0);
+    let mut buffer = {
+        let mut buffer = BytesMut::with_capacity(4096);
+        buffer.resize(4096, 0);
+        buffer
+    };
 
     let (sender, mut receiver) = watch::channel(None);
+    let controller = Arc::new(controller);
 
-    let receivers = receiver.clone();
+    let receiver_inner = receiver.clone();
+    let controller_inner = controller.clone();
     tokio::spawn(async move {
-        controller.third_handshake(receivers).await;
+        controller_inner.third_handshake(receiver_inner).await;
+    });
+
+    let receiver_inner = receiver.clone();
+    let controller_inner = controller.clone();
+    tokio::spawn(async move {
+        controller_inner.third_handshake(receiver_inner).await;
     });
 
     tokio::spawn(async move {
+        let mut addr_len = size_of::<sockaddr>() as u32;
         loop {
             let receive_size = unsafe {
                 recvfrom(
@@ -58,7 +70,7 @@ pub async fn receive_packet(controller: Controller) {
                     continue;
                 }
 
-                let recv_port = ntohs(tcp_head.__bindgen_anon_1.__bindgen_anon_2.source);
+                let recv_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
                 if recv_port == controller.port {
                     info!("Received packet from me, thrown.");
                     continue;
@@ -83,22 +95,13 @@ pub async fn receive_packet(controller: Controller) {
                 tcphdr: tcp_head,
                 data: String::new(),
             })).unwrap();
-            error!("FUCKING SEND!");
         }
     }).await.unwrap();
 }
 
 pub async fn send_packet(controller: Controller) {
-    let data = "miao!";
-
-/*
-    let mut string = String::new();
-    unsafe { BASE64_STANDARD.encode_string(std::slice::from_raw_parts(ptr, packet.len()), &mut string); }
-    info!("Sent packet's base64: {}", string);
-*/
-
     let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
-    let mut packet = TCPPacket::default(address.as_str(), data, controller.port).unwrap();
+    let mut packet = TCPPacket::default::<_, String>(address, None, controller.port).unwrap();
 
     unsafe {
         let sent_size = sendto(

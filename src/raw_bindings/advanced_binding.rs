@@ -10,7 +10,8 @@ use std::mem::size_of;
 
 use rand::random;
 
-use crate::raw_bindings::raw_bindings::{htons, in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, ntohs, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, sockaddr_in, tcphdr};
+use crate::tcp::util::ChangingOrderSizes;
 
 impl iphdr {
     #[inline]
@@ -22,7 +23,7 @@ impl iphdr {
             iphdr {
                 tos: 0,
                 tot_len: (size_of::<iphdr>() + size_of::<tcphdr>() + data_len) as u16,
-                id: htons(random()),
+                id: random::<u16>().to_network(),
                 frag_off: 0,
                 ttl: 64,
                 protocol: IPPROTO_TCP as u8,
@@ -54,11 +55,11 @@ impl tcphdr {
         let mut tcphdr = Self::new();
 
         unsafe {
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.source = source_port.to_be();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = destination_port.to_be();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = (random::<u32>() % 4294967295).to_be();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0_u32.to_be();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 5840_u16.to_be();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.source = source_port.to_network();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = destination_port.to_network();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = (random::<u32>() % 4294967295).to_network();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0_u32.to_network();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 5840_u16.to_network();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_doff(5);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_fin(0);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_syn(0);
@@ -95,16 +96,16 @@ impl Display for tcphdr {
     - Acknowledgement Number: {}\n\
     - URG: {}",
                     self.__bindgen_anon_1.__bindgen_anon_2.check,
-                    self.__bindgen_anon_1.__bindgen_anon_2.dest.to_le(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.source.to_le(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
                     self.__bindgen_anon_1.__bindgen_anon_2.doff(),
                     self.__bindgen_anon_1.__bindgen_anon_2.fin(),
                     self.__bindgen_anon_1.__bindgen_anon_2.psh(),
                     self.__bindgen_anon_1.__bindgen_anon_2.rst(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.seq.to_le(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.syn().to_le(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.ack().to_le(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_le(),
+                    u32::from_be(self.__bindgen_anon_1.__bindgen_anon_2.seq),
+                    u16::from_be(self.__bindgen_anon_1.__bindgen_anon_2.syn()),
+                    u16::from_be(self.__bindgen_anon_1.__bindgen_anon_2.ack()),
+                    u32::from_be(self.__bindgen_anon_1.__bindgen_anon_2.ack_seq),
                     self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr,
                 )
             }
@@ -114,8 +115,8 @@ impl Display for tcphdr {
                 f,
                 "[check: {}, dest: {}, source: {}, doff: {}, fin: {}, psh: {}, rst: {}, seq: {}, syn: {}, ack: {}, ack_seq: {}]",
                 self.__bindgen_anon_1.__bindgen_anon_2.check,
-                ntohs(self.__bindgen_anon_1.__bindgen_anon_2.dest),
-                ntohs(self.__bindgen_anon_1.__bindgen_anon_2.source),
+                self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
                 self.__bindgen_anon_1.__bindgen_anon_2.doff(),
                 self.__bindgen_anon_1.__bindgen_anon_2.fin(),
                 self.__bindgen_anon_1.__bindgen_anon_2.psh(),
@@ -138,7 +139,7 @@ impl Display for sockaddr_in {
         };
         let string = c_str.to_str().unwrap();
         unsafe {
-            write!(f, "[sin_family: {}, sin_port: {}, sin_addr: {}]", self.sin_family, ntohs(self.sin_port), string)
+            write!(f, "[sin_family: {}, sin_port: {}, sin_addr: {}]", self.sin_family, self.sin_port.to_host(), string)
         }
     }
 }
@@ -178,7 +179,7 @@ impl Display for iphdr {
                 self.check,
                 daddr,
                 self.frag_off,
-                ntohs(self.id),
+                self.id.to_host(),
                 self.ihl(),
                 self.protocol,
                 saddr,
@@ -197,7 +198,7 @@ impl Display for iphdr {
                 self.check,
                 daddr,
                 self.frag_off,
-                ntohs(self.id),
+                self.id.to_host(),
                 self.ihl(),
                 self.protocol,
                 saddr,
