@@ -42,12 +42,12 @@ pub async fn receive_packet(controller: Controller) {
         controller_inner.third_handshake(receiver_inner).await;
     });
 
-/*    let receiver_inner = receiver.clone();
+    let receiver_inner = receiver.clone();
     let controller_inner = controller.clone();
     tokio::spawn(async move {
         controller_inner.third_handshake(receiver_inner).await;
     });
-*/
+
     tokio::spawn(async move {
         let mut addr_len = size_of::<sockaddr>() as u32;
         loop {
