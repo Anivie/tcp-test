@@ -15,7 +15,7 @@ pub struct PseudoHeader {
 pub struct ReceiveData {
     pub iphdr: iphdr,
     pub tcphdr: tcphdr,
-    pub data: String,
+    pub data: Option<Vec<u8>>,
 }
 
 #[derive(Copy, Clone)]

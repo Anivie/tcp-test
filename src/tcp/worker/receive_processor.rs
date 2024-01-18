@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+use colored::Colorize;
 use log::info;
 use tokio::sync::watch::Receiver;
 
@@ -9,7 +10,7 @@ use crate::tcp::data::{Controller, ReceiveData};
 use crate::tcp::tcp_packet::TCPPacket;
 
 impl Controller {
-    pub async fn third_handshake(&self, receiver: Receiver<Option<ReceiveData>>) {
+    pub async fn third_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         self.process_receiver(receiver, |receiver| unsafe {
             let receiver = receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
 
@@ -31,6 +32,14 @@ impl Controller {
                 );
 
                 tracing::info!("third_handshake send: {}, with size: {}", packet, sent_size);
+            }
+        }).await;
+    }
+
+    pub async fn data_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
+        self.process_receiver(receiver, |receiver| unsafe {
+            if let Some(a) = &receiver.data {
+                info!("STRING {:?}", String::from_utf8_lossy(a).blue());
             }
         }).await;
     }

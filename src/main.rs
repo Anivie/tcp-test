@@ -72,14 +72,7 @@ async fn main() {
     };
 
     let receive_coroutine = tokio::spawn(receive_packet(control));
-
-    tokio::spawn(async move {
-        let mut reader = BufReader::new(io::stdin());
-        loop {
-            send_packet(control).await;
-            read_user_input(&mut reader).await.unwrap();
-        }
-    }).await.unwrap();
+    send_packet(control).await;
 
     receive_coroutine.await.unwrap();
 }

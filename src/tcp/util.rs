@@ -26,7 +26,7 @@ impl Display for ReceiveData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{{\nIP head: {},\n TCP head: {},\n Data: {}\n]}}",
+            "{{\nIP head: {},\n TCP head: {},\n Data: {:?}\n]}}",
             self.iphdr,
             self.tcphdr,
             self.data,

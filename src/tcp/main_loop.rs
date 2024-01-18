@@ -4,6 +4,7 @@ use std::os::raw::c_void;
 use std::sync::Arc;
 
 use bytes::BytesMut;
+use colored::Colorize;
 use tokio::sync::watch;
 use tracing::{info, warn};
 
@@ -27,30 +28,30 @@ pub async fn receive_packet(controller: Controller) {
         }
     };
 
-    let buffer = {
-        let mut buffer = BytesMut::with_capacity(4096);
-        buffer.resize(4096, 0);
-        buffer
-    };
-
     let (sender, receiver) = watch::channel(None);
     let controller = Arc::new(controller);
 
     let receiver_inner = receiver.clone();
     let controller_inner = controller.clone();
     tokio::spawn(async move {
-        controller_inner.third_handshake(receiver_inner).await;
+        controller_inner.third_handshake_listener(receiver_inner).await;
     });
 
     let receiver_inner = receiver.clone();
     let controller_inner = controller.clone();
     tokio::spawn(async move {
-        controller_inner.third_handshake(receiver_inner).await;
+        controller_inner.data_listener(receiver_inner).await;
     });
 
     tokio::spawn(async move {
         let mut addr_len = size_of::<sockaddr>() as u32;
         loop {
+            let buffer = {
+                let mut buffer = BytesMut::with_capacity(4096);
+                buffer.resize(4096, 0);
+                buffer
+            };
+
             let receive_size = unsafe {
                 recvfrom(
                     controller.socket,
@@ -88,12 +89,20 @@ pub async fn receive_packet(controller: Controller) {
             string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
             string.push_str(format!("  received size: {}\n", receive_size).as_str());
             string.push_str("}\n");
-            info!("{}", string);
+            info!("{}", string.green());
+
 
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,
                 tcphdr: tcp_head,
-                data: String::new(),
+                data: unsafe {
+                    let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
+                    if data_size != 0 {
+                        Some(buffer[(20 + (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)) as usize .. receive_size as usize].to_vec())
+                    }else {
+                        None
+                    }
+                },
             })).unwrap();
         }
     }).await.unwrap();
