@@ -10,7 +10,7 @@ use crate::tcp::data::{Controller, ReceiveData};
 use crate::tcp::tcp_packet::TCPPacket;
 
 impl Controller {
-    pub async fn printer(&self, mut receiver: Receiver<Option<ReceiveData>>) {
+    pub async fn third_handshake(&self, mut receiver: Receiver<Option<ReceiveData>>) {
         loop {
             if let Some(receiver) = receiver.borrow_and_update().deref() {
                 info!("Start printer loop{}", receiver);

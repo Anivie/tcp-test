@@ -34,7 +34,7 @@ pub async fn receive_packet(controller: Controller) {
 
     let receivers = receiver.clone();
     tokio::spawn(async move {
-        controller.printer(receivers).await;
+        controller.third_handshake(receivers).await;
     });
 
     tokio::spawn(async move {
