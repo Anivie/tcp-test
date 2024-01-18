@@ -27,13 +27,13 @@ pub async fn receive_packet(controller: Controller) {
         }
     };
 
-    let mut buffer = {
+    let buffer = {
         let mut buffer = BytesMut::with_capacity(4096);
         buffer.resize(4096, 0);
         buffer
     };
 
-    let (sender, mut receiver) = watch::channel(None);
+    let (sender, receiver) = watch::channel(None);
     let controller = Arc::new(controller);
 
     let receiver_inner = receiver.clone();
@@ -42,12 +42,12 @@ pub async fn receive_packet(controller: Controller) {
         controller_inner.third_handshake(receiver_inner).await;
     });
 
-    let receiver_inner = receiver.clone();
+/*    let receiver_inner = receiver.clone();
     let controller_inner = controller.clone();
     tokio::spawn(async move {
         controller_inner.third_handshake(receiver_inner).await;
     });
-
+*/
     tokio::spawn(async move {
         let mut addr_len = size_of::<sockaddr>() as u32;
         loop {

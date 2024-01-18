@@ -138,9 +138,7 @@ impl Display for sockaddr_in {
             }))
         };
         let string = c_str.to_str().unwrap();
-        unsafe {
-            write!(f, "[sin_family: {}, sin_port: {}, sin_addr: {}]", self.sin_family, self.sin_port.to_host(), string)
-        }
+        write!(f, "[sin_family: {}, sin_port: {}, sin_addr: {}]", self.sin_family, self.sin_port.to_host(), string)
     }
 }
 
@@ -191,22 +189,20 @@ impl Display for iphdr {
         }
 
         #[cfg(not(feature = "human_read_packet"))]
-        unsafe {
-            write!(
-                f,
-                "[check: {}, daddr: {}, frag_off: {}, id: {}, ihl: {}, protocol: {}, saddr: {}, tos: {}, tot_len: {}, ttl: {}, version: {}]",
-                self.check,
-                daddr,
-                self.frag_off,
-                self.id.to_host(),
-                self.ihl(),
-                self.protocol,
-                saddr,
-                self.tos,
-                self.tot_len,
-                self.ttl,
-                self.version()
-            )
-        }
+        write!(
+            f,
+            "[check: {}, daddr: {}, frag_off: {}, id: {}, ihl: {}, protocol: {}, saddr: {}, tos: {}, tot_len: {}, ttl: {}, version: {}]",
+            self.check,
+            daddr,
+            self.frag_off,
+            self.id.to_host(),
+            self.ihl(),
+            self.protocol,
+            saddr,
+            self.tos,
+            self.tot_len,
+            self.ttl,
+            self.version()
+        )
     }
 }

@@ -35,19 +35,19 @@ impl Display for ReceiveData {
 }
 
 pub trait ChangingOrderSizes<T> {
-    #[inline]
     fn to_network(self) -> T;
-    #[inline]
     fn to_host(self) -> T;
 }
 
 impl ChangingOrderSizes<u16> for u16{
+    #[inline]
     fn to_network(self) -> u16 {
         unsafe {
             htons(self)
         }
     }
 
+    #[inline]
     fn to_host(self) -> u16 {
         unsafe {
             ntohs(self)
