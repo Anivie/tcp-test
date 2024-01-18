@@ -37,7 +37,7 @@ impl Controller {
     }
 
     pub async fn data_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
-        self.process_receiver(receiver, |receiver| unsafe {
+        self.process_receiver(receiver, |receiver| {
             if let Some(a) = &receiver.data {
                 info!("STRING {:?}", String::from_utf8_lossy(a).blue());
             }

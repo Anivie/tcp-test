@@ -6,8 +6,6 @@ use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
 
 use rand::random;
-use tokio::io;
-use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 use tracing::{info, Level};
 
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
@@ -77,8 +75,8 @@ async fn main() {
     receive_coroutine.await.unwrap();
 }
 
-async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
+/*async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
     let mut buffer = String::new();
     reader.read_line(&mut buffer).await?;
     Ok(buffer.trim_end().to_string())
-}
+}*/
