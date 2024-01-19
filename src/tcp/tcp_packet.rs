@@ -33,11 +33,23 @@ impl TCPPacket {
         self.as_ptr()
     }
 
-    pub fn third_handshake(&mut self, response_ack: u32, response_seq: u32) -> *const c_void {
+    pub fn third_handshake(&mut self, response_ack_seq: u32, response_seq: u32) -> *const c_void {
+        unsafe {
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1);
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq = response_ack_seq;
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq.to_host() + 1).to_network();
+        }
+
+        self.as_ptr()
+    }
+
+    pub fn reply_packet(&mut self, response_seq: u32, response_ack: u32, data_size: u32) -> *const c_void {
+        let response_seq = response_seq.to_host();
+
         unsafe {
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1);
             self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq = response_ack;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq.to_host() + 1).to_network();
+            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq + data_size).to_network();
         }
 
         self.as_ptr()

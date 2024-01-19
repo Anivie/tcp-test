@@ -78,53 +78,25 @@ impl tcphdr {
 impl Display for tcphdr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         unsafe {
-            #[cfg(feature = "human_read_packet")]
-            unsafe {
-                write!(
-                    f,
-                    "TCP Header:\n\
-    - Check: {}\n\
-    - Destination Port: {}\n\
-    - Source Port: {}\n\
-    - Data Offset: {}\n\
-    - FIN: {}\n\
-    - PSH: {}\n\
-    - RST: {}\n\
-    - Sequence Number: {}\n\
-    - SYN: {}\n\
-    - ACK: {}\n\
-    - Acknowledgement Number: {}\n\
-    - URG: {}",
-                    self.__bindgen_anon_1.__bindgen_anon_2.check,
-                    self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.doff(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.fin(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.psh(),
-                    self.__bindgen_anon_1.__bindgen_anon_2.rst(),
-                    u32::from_be(self.__bindgen_anon_1.__bindgen_anon_2.seq),
-                    u16::from_be(self.__bindgen_anon_1.__bindgen_anon_2.syn()),
-                    u16::from_be(self.__bindgen_anon_1.__bindgen_anon_2.ack()),
-                    u32::from_be(self.__bindgen_anon_1.__bindgen_anon_2.ack_seq),
-                    self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr,
-                )
-            }
-
-            #[cfg(not(feature = "human_read_packet"))]
             write!(
                 f,
-                "[check: {}, dest: {}, source: {}, doff: {}, fin: {}, psh: {}, rst: {}, seq: {}, syn: {}, ack: {}, ack_seq: {}]",
-                self.__bindgen_anon_1.__bindgen_anon_2.check,
-                self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
+                "TCP head: {{source: {}, dest: {}, seq: {}, ack_seq: {}, res1: {}, doff: {}, fin: {}, syn: {}, rst: {}, psh: {}, ack: {}, urg: {}, res2: {}, window: {}, check: {}, urg_ptr: {}}}",
                 self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.seq.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.res1(),
                 self.__bindgen_anon_1.__bindgen_anon_2.doff(),
                 self.__bindgen_anon_1.__bindgen_anon_2.fin(),
-                self.__bindgen_anon_1.__bindgen_anon_2.psh(),
-                self.__bindgen_anon_1.__bindgen_anon_2.rst(),
-                self.__bindgen_anon_1.__bindgen_anon_2.seq,
                 self.__bindgen_anon_1.__bindgen_anon_2.syn(),
+                self.__bindgen_anon_1.__bindgen_anon_2.rst(),
+                self.__bindgen_anon_1.__bindgen_anon_2.psh(),
                 self.__bindgen_anon_1.__bindgen_anon_2.ack(),
-                self.__bindgen_anon_1.__bindgen_anon_2.ack_seq
+                self.__bindgen_anon_1.__bindgen_anon_2.urg(),
+                self.__bindgen_anon_1.__bindgen_anon_2.res2(),
+                self.__bindgen_anon_1.__bindgen_anon_2.window.to_host(),
+                self.__bindgen_anon_1.__bindgen_anon_2.check,
+                self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr
             )
         }
     }
@@ -158,51 +130,20 @@ impl Display for iphdr {
         };
         let daddr = c_str.to_str().unwrap();
 
-        #[cfg(feature = "human_read_packet")]
-        unsafe {
-            write!(
-                f,
-                "IP Header:\n\
-        - Check: {}\n\
-        - Destination Address: {}\n\
-        - Fragment Offset: {}\n\
-        - ID: {}\n\
-        - IHL: {}\n\
-        - Protocol: {}\n\
-        - Source Address: {}\n\
-        - TOS: {}\n\
-        - Total Length: {}\n\
-        - TTL: {}\n\
-        - Version: {}",
-                self.check,
-                daddr,
-                self.frag_off,
-                self.id.to_host(),
-                self.ihl(),
-                self.protocol,
-                saddr,
-                self.tos,
-                self.tot_len,
-                self.ttl,
-                self.version()
-            )
-        }
-
-        #[cfg(not(feature = "human_read_packet"))]
         write!(
             f,
-            "[check: {}, daddr: {}, frag_off: {}, id: {}, ihl: {}, protocol: {}, saddr: {}, tos: {}, tot_len: {}, ttl: {}, version: {}]",
-            self.check,
-            daddr,
-            self.frag_off,
-            self.id.to_host(),
+            "IP head: {{ihl: {}, version: {}, tos: {}, tot_len: {}, id: {}, frag_off: {}, ttl: {}, protocol: {}, check: {}, saddr: {}, daddr: {}}}",
             self.ihl(),
-            self.protocol,
-            saddr,
+            self.version(),
             self.tos,
             self.tot_len,
+            self.id.to_host(),
+            self.frag_off,
             self.ttl,
-            self.version()
+            self.protocol,
+            self.check,
+            saddr,
+            daddr
         )
     }
 }

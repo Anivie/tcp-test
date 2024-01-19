@@ -18,9 +18,10 @@ pub struct ReceiveData {
     pub data: Option<Vec<u8>>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Controller {
     pub socket: c_int,
     pub port: u16,
     pub sockaddr_to: sockaddr_in,
+    pub address: String,
 }

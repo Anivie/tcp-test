@@ -3,9 +3,6 @@ name = "tcp-test"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-human_read_packet = []
-
 [dependencies]
 rand = "0.8.5"
 colored = "2.1.0"
@@ -14,7 +11,7 @@ bytes = "1.5.0"
 base64 = "0.21.7"
 
 tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
+tracing-subscriber = { version = "0.3.18", features = ["chrono"] }
 log = "0.4.20"
 
 [dependencies.tokio]

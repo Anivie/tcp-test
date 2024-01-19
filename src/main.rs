@@ -67,9 +67,10 @@ async fn main() {
         socket,
         port,
         sockaddr_to,
+        address: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
     };
 
-    let receive_coroutine = tokio::spawn(receive_packet(control));
+    let receive_coroutine = tokio::spawn(receive_packet(control.clone()));
     send_packet(control).await;
 
     receive_coroutine.await.unwrap();

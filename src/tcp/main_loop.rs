@@ -8,8 +8,8 @@ use colored::Colorize;
 use tokio::sync::watch;
 use tracing::{info, warn};
 
-use crate::{REMOTE_ADDRESS, REMOTE_PORT};
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
+use crate::REMOTE_PORT;
 use crate::tcp::data::{Controller, ReceiveData};
 use crate::tcp::tcp_packet::TCPPacket;
 use crate::tcp::util::ChangingOrderSizes;
@@ -109,8 +109,7 @@ pub async fn receive_packet(controller: Controller) {
 }
 
 pub async fn send_packet(controller: Controller) {
-    let address = format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT);
-    let mut packet = TCPPacket::default::<_, String>(address, None, controller.port).unwrap();
+    let mut packet = TCPPacket::default::<_, String>(controller.address, None, controller.port).unwrap();
 
     unsafe {
         let sent_size = sendto(
