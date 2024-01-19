@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
 use crate::raw_bindings::raw_bindings::{iphdr, tcphdr};
-use crate::tcp::data::PseudoHeader;
+use crate::tcp::data::{Controller, PseudoHeader};
 use crate::tcp::util::{ChangingOrderSizes, ToAddress};
 
 pub struct TCPPacket {
@@ -35,9 +35,10 @@ impl TCPPacket {
 
     pub fn third_handshake(&mut self, response_ack_seq: u32, response_seq: u32) -> *const c_void {
         unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1);
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq = response_ack_seq;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq.to_host() + 1).to_network();
+            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            tcp_head.set_ack(1);
+            tcp_head.seq = response_ack_seq;
+            tcp_head.ack_seq = (response_seq.to_host() + 1).to_network();
         }
 
         self.as_ptr()
@@ -47,9 +48,23 @@ impl TCPPacket {
         let response_seq = response_seq.to_host();
 
         unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_ack(1);
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq = response_ack;
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq = (response_seq + data_size).to_network();
+            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+
+            tcp_head.set_ack(1);
+            tcp_head.seq = response_ack;
+            tcp_head.ack_seq = (response_seq + data_size).to_network();
+        }
+
+        self.as_ptr()
+    }
+
+    pub fn fin_packet(&mut self, controller: &Controller) -> *const c_void {
+        unsafe {
+            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            tcp_head.set_fin(1);
+            tcp_head.set_ack(1);
+            tcp_head.seq = (*controller.last_seq_number.read()).to_network();
+            tcp_head.ack_seq = (*controller.last_ack_number.read() + 1).to_network();
         }
 
         self.as_ptr()
@@ -57,7 +72,10 @@ impl TCPPacket {
 }
 
 impl TCPPacket {
-    pub fn default<A: ToAddress, T: Into<Vec<u8>>>(destination_address: A, data: Option<T>, source_port: u16) -> Result<TCPPacket, String> {
+    pub fn default<A, T>(destination_address: A, data: Option<T>, source_port: u16) -> Result<TCPPacket, String>
+    where A: ToAddress,
+          T: Into<Vec<u8>>,
+    {
         let (port, addr) = destination_address.to_address().ok_or("Invalid address")?;
 
         let data = match data {

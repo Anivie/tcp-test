@@ -436,6 +436,7 @@ dependencies = [
  "bytes",
  "colored",
  "log",
+ "parking_lot",
  "rand",
  "tokio",
  "tracing",

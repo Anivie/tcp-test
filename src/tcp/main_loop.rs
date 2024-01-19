@@ -14,6 +14,18 @@ use crate::tcp::data::{Controller, ReceiveData};
 use crate::tcp::tcp_packet::TCPPacket;
 use crate::tcp::util::ChangingOrderSizes;
 
+macro_rules! spawn_listener {
+    ($controller:expr, $receiver:expr, [$($func:ident),*]) => {
+        $(
+            let receiver_inner = $receiver.clone();
+            let controller_inner = $controller.clone();
+            tokio::spawn(async move {
+                controller_inner.$func(receiver_inner).await;
+            });
+        )*
+    };
+}
+
 pub async fn receive_packet(controller: Controller) {
     let mut sockaddr_in = unsafe {
         let addr = CString::new("127.0.0.1").unwrap();
@@ -31,17 +43,11 @@ pub async fn receive_packet(controller: Controller) {
     let (sender, receiver) = watch::channel(None);
     let controller = Arc::new(controller);
 
-    let receiver_inner = receiver.clone();
-    let controller_inner = controller.clone();
-    tokio::spawn(async move {
-        controller_inner.third_handshake_listener(receiver_inner).await;
-    });
-
-    let receiver_inner = receiver.clone();
-    let controller_inner = controller.clone();
-    tokio::spawn(async move {
-        controller_inner.data_listener(receiver_inner).await;
-    });
+    spawn_listener!(controller, receiver, [
+        third_handshake_listener,
+        data_listener,
+        packet_printer
+    ]);
 
     tokio::spawn(async move {
         let mut addr_len = size_of::<sockaddr>() as u32;
@@ -80,20 +86,25 @@ pub async fn receive_packet(controller: Controller) {
 
                 if !(source_port == controller.local_port && destination_port == REMOTE_PORT) &&
                     !(source_port == REMOTE_PORT && destination_port == controller.local_port) {
-                    info!("{}", "Received packet does not match the required ports, thrown.".truecolor(25, 160, 60));
+                    info!(
+                        "{}",
+                        format!(
+                            "Received packet does not match the required ports({} to {}), thrown.",
+                            source_port,
+                            destination_port
+                        ).truecolor(25, 160, 60)
+                    );
                     continue;
                 }
 
                 (ip_head, tcp_head)
             };
+            info!("{}", format!("Receive {} size packet.", receive_size).blue());
 
-            let mut string = String::new();
-            string.push_str("Received: {\n");
-            string.push_str(format!("  received ip head: {}\n", ip_head).as_str());
-            string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
-            string.push_str(format!("  received size: {}\n", receive_size).as_str());
-            string.push_str("}\n");
-            info!("{}", string.truecolor(170, 170, 170));
+            unsafe {
+                *controller.last_ack_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host();
+                *controller.last_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq.to_host();
+            }
 
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,

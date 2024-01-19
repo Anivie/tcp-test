@@ -1,4 +1,7 @@
 use std::ffi::c_int;
+use std::sync::Arc;
+
+use parking_lot::RwLock;
 
 use crate::raw_bindings::raw_bindings::{iphdr, sockaddr_in, tcphdr};
 
@@ -24,4 +27,6 @@ pub struct Controller {
     pub local_port: u16,
     pub sockaddr_to_remote: sockaddr_in,
     pub address_to_remote: String,
+    pub last_ack_number: Arc<RwLock<u32>>,
+    pub last_seq_number: Arc<RwLock<u32>>
 }

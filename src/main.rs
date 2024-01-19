@@ -4,10 +4,14 @@
 
 use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
+use std::sync::Arc;
 
+use colored::Colorize;
+use parking_lot::lock_api::RwLock;
 use rand::random;
 use tracing::{info, Level};
 
+use crate::cmd_controller::cmd_controller::commandline_listener;
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
 use crate::tcp::data::Controller;
 use crate::tcp::main_loop::{receive_packet, send_packet};
@@ -45,7 +49,7 @@ async fn main() {
 
     let port: u16 = {
         let p: u16 = random();
-        info!("Start with port: {}", p);
+        info!("Start with port: {}", p.to_string().red());
         p
     };
 
@@ -69,10 +73,14 @@ async fn main() {
         local_port: port,
         sockaddr_to_remote: sockaddr_to,
         address_to_remote: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
+        last_ack_number: Arc::new(RwLock::new(0)),
+        last_seq_number: Arc::new(RwLock::new(0)),
     };
 
     let receive_coroutine = tokio::spawn(receive_packet(control.clone()));
+    let user_input_coroutine = tokio::spawn(commandline_listener(control.clone()));
     send_packet(control).await;
 
     receive_coroutine.await.unwrap();
+    user_input_coroutine.await.unwrap();
 }

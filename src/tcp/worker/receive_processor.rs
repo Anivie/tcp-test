@@ -34,6 +34,17 @@ impl Controller {
         }).await;
     }
 
+    pub async fn packet_printer(&self, receiver: Receiver<Option<ReceiveData>>) {
+        self.process_receiver(receiver, |receiver| {
+            let mut string = String::new();
+            string.push_str("Received: {\n");
+            string.push_str(format!("  received ip head: {}\n", receiver.iphdr).as_str());
+            string.push_str(format!("  received tcp head: {}\n", receiver.tcphdr).as_str());
+            string.push_str("}\n");
+            tracing::info!("{}", string.truecolor(170, 170, 170));
+        }).await;
+    }
+
     pub async fn data_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         self.process_receiver(receiver, |receiver| {
             if let Some(data) = &receiver.data {
@@ -62,7 +73,7 @@ impl Controller {
                     )
                 };
 
-                tracing::info!("reply_packet data send: {}, with size: {}", packet, sent_size);
+                tracing::info!("data ack packet send: {}, with size: {}", packet, sent_size);
             }
         }).await;
     }
