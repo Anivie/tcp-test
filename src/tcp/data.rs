@@ -21,7 +21,7 @@ pub struct ReceiveData {
 #[derive(Clone)]
 pub struct Controller {
     pub socket: c_int,
-    pub port: u16,
-    pub sockaddr_to: sockaddr_in,
-    pub address: String,
+    pub local_port: u16,
+    pub sockaddr_to_remote: sockaddr_in,
+    pub address_to_remote: String,
 }

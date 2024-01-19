@@ -15,7 +15,7 @@ impl Controller {
 
             if receiver.syn().to_le() == 1 && receiver.ack().to_le() == 1 {
                 info!("{}", "Secondary handshake packet found, tertiary handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = TCPPacket::default::<_, String>(&self.address, None, self.port).unwrap();
+                let mut packet = TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap();
 
                 let sent_size = sendto(
                     self.socket,
@@ -25,7 +25,7 @@ impl Controller {
                     ),
                     packet.len(),
                     0,
-                    &self.sockaddr_to as *const sockaddr_in as *const sockaddr,
+                    &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
                     size_of::<sockaddr>() as u32
                 );
 
@@ -45,7 +45,7 @@ impl Controller {
                     .replace("\n", "")
                     .truecolor(10, 163, 250)
                 );
-                let mut packet = TCPPacket::default::<_, String>(&self.address, None, self.port).unwrap();
+                let mut packet = TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap();
 
                 let sent_size = unsafe {
                     sendto(
@@ -57,7 +57,7 @@ impl Controller {
                         ),
                         packet.len(),
                         0,
-                        &self.sockaddr_to as *const sockaddr_in as *const sockaddr,
+                        &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
                         size_of::<sockaddr>() as u32,
                     )
                 };

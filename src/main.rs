@@ -15,6 +15,7 @@ use crate::tcp::util::ChangingOrderSizes;
 
 mod raw_bindings;
 mod tcp;
+mod cmd_controller;
 
 const REMOTE_ADDRESS: &str = "127.0.0.1";
 const REMOTE_PORT: u16 = 65534;
@@ -65,9 +66,9 @@ async fn main() {
 
     let control = Controller {
         socket,
-        port,
-        sockaddr_to,
-        address: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
+        local_port: port,
+        sockaddr_to_remote: sockaddr_to,
+        address_to_remote: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
     };
 
     let receive_coroutine = tokio::spawn(receive_packet(control.clone()));
@@ -75,9 +76,3 @@ async fn main() {
 
     receive_coroutine.await.unwrap();
 }
-
-/*async fn read_user_input(reader: &mut BufReader<Stdin>) -> io::Result<String> {
-    let mut buffer = String::new();
-    reader.read_line(&mut buffer).await?;
-    Ok(buffer.trim_end().to_string())
-}*/

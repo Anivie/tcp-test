@@ -20,7 +20,7 @@ pub async fn receive_packet(controller: Controller) {
 
         sockaddr_in {
             sin_family: AF_INET as u16,
-            sin_port: controller.port.to_network(),
+            sin_port: controller.local_port.to_network(),
             sin_addr: in_addr {
                 s_addr: inet_addr(addr.as_ptr()),
             },
@@ -67,16 +67,20 @@ pub async fn receive_packet(controller: Controller) {
                 let ip_head = *(buffer.as_ptr() as *const iphdr);
                 let tcp_head = *(buffer.as_ptr().offset(size_of::<iphdr>() as isize) as *const tcphdr);
                 if ip_head.protocol != 6 {
-                    warn!("Received packet is not a TCP packet, thrown.");
+                    warn!("{}", "Received packet is not a TCP packet, thrown.".truecolor(25, 160, 60));
                     continue;
                 }
 
-                let recv_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
-                if recv_port == controller.port {
+                let source_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
+                let destination_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.dest.to_host();
+                if source_port == controller.local_port {
                     info!("{}", "Received packet from me, thrown.".truecolor(25, 160, 60));
                     continue;
-                } else if recv_port != REMOTE_PORT {
-                    info!("Received packet(from {}) is not listening TCP packet, thrown.", recv_port);
+                }
+
+                if !(source_port == controller.local_port && destination_port == REMOTE_PORT) &&
+                    !(source_port == REMOTE_PORT && destination_port == controller.local_port) {
+                    info!("{}", "Received packet does not match the required ports, thrown.".truecolor(25, 160, 60));
                     continue;
                 }
 
@@ -108,7 +112,7 @@ pub async fn receive_packet(controller: Controller) {
 }
 
 pub async fn send_packet(controller: Controller) {
-    let mut packet = TCPPacket::default::<_, String>(controller.address, None, controller.port).unwrap();
+    let mut packet = TCPPacket::default::<_, String>(controller.address_to_remote, None, controller.local_port).unwrap();
 
     unsafe {
         let sent_size = sendto(
@@ -116,7 +120,7 @@ pub async fn send_packet(controller: Controller) {
             packet.first_handshake(),
             packet.len(),
             0,
-            &controller.sockaddr_to as *const sockaddr_in as *const sockaddr,
+            &controller.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
             size_of::<sockaddr>() as u32
         );
 
