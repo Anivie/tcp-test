@@ -3,7 +3,9 @@
 ## 一次关于计算机网络的实验
 
 使用raw socket，我使用(unsafe) rust ffi来完成这一功能，过程非常曲折(
+目前认为完成，但现在可以正常握手并接收信息，连接的目标是tokio的echo demo
 
+本项目参考于[这个实验](https://github.com/MaxXor/raw-sockets-example/blob/master/rawsockets.c)，我使用rust手动实现并进行了简单的封装
 你可以在Linux中直接使用`cargo run`来运行这段程序
 
 测试环境:
