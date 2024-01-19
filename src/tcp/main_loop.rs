@@ -73,7 +73,7 @@ pub async fn receive_packet(controller: Controller) {
 
                 let recv_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
                 if recv_port == controller.port {
-                    info!("Received packet from me, thrown.");
+                    info!("{}", "Received packet from me, thrown.".truecolor(25, 160, 60));
                     continue;
                 } else if recv_port != REMOTE_PORT {
                     info!("Received packet(from {}) is not listening TCP packet, thrown.", recv_port);
@@ -89,8 +89,7 @@ pub async fn receive_packet(controller: Controller) {
             string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
             string.push_str(format!("  received size: {}\n", receive_size).as_str());
             string.push_str("}\n");
-            info!("{}", string.green());
-
+            info!("{}", string.truecolor(170, 170, 170));
 
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,

@@ -8,6 +8,7 @@ use std::ffi::{CStr, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
+use colored::Colorize;
 use rand::random;
 
 use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, sockaddr_in, tcphdr};
@@ -80,23 +81,26 @@ impl Display for tcphdr {
         unsafe {
             write!(
                 f,
-                "TCP head: {{source: {}, dest: {}, seq: {}, ack_seq: {}, res1: {}, doff: {}, fin: {}, syn: {}, rst: {}, psh: {}, ack: {}, urg: {}, res2: {}, window: {}, check: {}, urg_ptr: {}}}",
-                self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
-                self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
-                self.__bindgen_anon_1.__bindgen_anon_2.seq.to_host(),
-                self.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host(),
-                self.__bindgen_anon_1.__bindgen_anon_2.res1(),
-                self.__bindgen_anon_1.__bindgen_anon_2.doff(),
-                self.__bindgen_anon_1.__bindgen_anon_2.fin(),
-                self.__bindgen_anon_1.__bindgen_anon_2.syn(),
-                self.__bindgen_anon_1.__bindgen_anon_2.rst(),
-                self.__bindgen_anon_1.__bindgen_anon_2.psh(),
-                self.__bindgen_anon_1.__bindgen_anon_2.ack(),
-                self.__bindgen_anon_1.__bindgen_anon_2.urg(),
-                self.__bindgen_anon_1.__bindgen_anon_2.res2(),
-                self.__bindgen_anon_1.__bindgen_anon_2.window.to_host(),
-                self.__bindgen_anon_1.__bindgen_anon_2.check,
-                self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr
+                "{}",
+                format!(
+                    "TCP head: {{source: {}, dest: {}, seq: {}, ack_seq: {}, res1: {}, doff: {}, fin: {}, syn: {}, rst: {}, psh: {}, ack: {}, urg: {}, res2: {}, window: {}, check: {}, urg_ptr: {}}}",
+                    self.__bindgen_anon_1.__bindgen_anon_2.source.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.dest.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.seq.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.res1(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.doff(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.fin(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.syn(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.rst(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.psh(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.ack(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.urg(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.res2(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.window.to_host(),
+                    self.__bindgen_anon_1.__bindgen_anon_2.check,
+                    self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr
+                ).truecolor(27, 159, 125)
             )
         }
     }
@@ -132,18 +136,21 @@ impl Display for iphdr {
 
         write!(
             f,
-            "IP head: {{ihl: {}, version: {}, tos: {}, tot_len: {}, id: {}, frag_off: {}, ttl: {}, protocol: {}, check: {}, saddr: {}, daddr: {}}}",
-            self.ihl(),
-            self.version(),
-            self.tos,
-            self.tot_len,
-            self.id.to_host(),
-            self.frag_off,
-            self.ttl,
-            self.protocol,
-            self.check,
-            saddr,
-            daddr
+            "{}",
+            format!(
+                "IP head: {{ihl: {}, version: {}, tos: {}, tot_len: {}, id: {}, frag_off: {}, ttl: {}, protocol: {}, check: {}, saddr: {}, daddr: {}}}",
+                self.ihl(),
+                self.version(),
+                self.tos,
+                self.tot_len,
+                self.id.to_host(),
+                self.frag_off,
+                self.ttl,
+                self.protocol,
+                self.check,
+                saddr,
+                daddr
+            ).truecolor(47, 122, 215)
         )
     }
 }

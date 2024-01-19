@@ -14,7 +14,7 @@ impl Controller {
             let receiver = receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
 
             if receiver.syn().to_le() == 1 && receiver.ack().to_le() == 1 {
-                info!("Secondary handshake packet found, tertiary handshake packet being sent......");
+                info!("{}", "Secondary handshake packet found, tertiary handshake packet being sent......".truecolor(200, 35, 55));
                 let mut packet = TCPPacket::default::<_, String>(&self.address, None, self.port).unwrap();
 
                 let sent_size = sendto(
@@ -38,7 +38,13 @@ impl Controller {
         self.process_receiver(receiver, |receiver| {
             if let Some(data) = &receiver.data {
                 let tmp = String::from_utf8_lossy(data);
-                info!("Receive a string from server: {}", tmp.replace("\r", "").replace("\n", "").red());
+                info!(
+                    "Receive a string from {}: {}",
+                    "server".truecolor(250, 108, 10),
+                    tmp.replace("\r", "")
+                    .replace("\n", "")
+                    .truecolor(10, 163, 250)
+                );
                 let mut packet = TCPPacket::default::<_, String>(&self.address, None, self.port).unwrap();
 
                 let sent_size = unsafe {
