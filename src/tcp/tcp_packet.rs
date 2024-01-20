@@ -61,10 +61,9 @@ impl TCPPacket {
     pub fn fin_packet(&mut self, controller: &Controller) -> *const c_void {
         unsafe {
             let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+
             tcp_head.set_fin(1);
-            tcp_head.set_ack(1);
             tcp_head.seq = (*controller.last_seq_number.read()).to_network();
-            tcp_head.ack_seq = (*controller.last_ack_number.read() + 1).to_network();
         }
 
         self.as_ptr()
@@ -80,7 +79,9 @@ impl TCPPacket {
 
         let data = match data {
             None => { CString::default() }
-            Some(data) => { CString::new(data).map_err(|e| e.to_string())? }
+            Some(data) => {
+                CString::new(data).map_err(|e| e.to_string())?
+            }
         };
 
         let data_len = data.count_bytes();

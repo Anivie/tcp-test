@@ -1,5 +1,6 @@
 #![feature(cstr_count_bytes)]
 #![feature(let_chains)]
+// #![feature(lazy_cell)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
 use std::ffi::{c_int, CString};
@@ -24,6 +25,10 @@ mod cmd_controller;
 const REMOTE_ADDRESS: &str = "127.0.0.1";
 const REMOTE_PORT: u16 = 65534;
 
+/*static GLOBAL_MAP:LazyLock<RwLock<parking_lot::RawRwLock, DashMap<String, i32>>>  = LazyLock::new(|| {
+    RwLock::new(DashMap::default())
+});
+*/
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
