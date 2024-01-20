@@ -3,15 +3,15 @@ use std::fmt::{Display, Formatter};
 use std::mem::size_of;
 
 use crate::raw_bindings::raw_bindings::{iphdr, tcphdr};
-use crate::tcp::data::{Controller, PseudoHeader};
+use crate::tcp::packet::data::PseudoHeader;
 use crate::tcp::util::{ChangingOrderSizes, ToAddress};
 
 pub struct TCPPacket {
-    ip_head: iphdr,
-    tcp_head: tcphdr,
+    pub(crate) ip_head: iphdr,
+    pub(crate) tcp_head: tcphdr,
 
-    data: CString,
-    data_vec: Vec<u8>
+    pub(crate) data: CString,
+    pub(crate) data_vec: Vec<u8>
 }
 
 impl Display for TCPPacket {
@@ -22,51 +22,6 @@ impl Display for TCPPacket {
             self.ip_head,
             self.tcp_head
         )
-    }
-}
-
-impl TCPPacket {
-    pub fn first_handshake(&mut self) -> *const c_void {
-        unsafe {
-            self.tcp_head.__bindgen_anon_1.__bindgen_anon_2.set_syn(1);
-        }
-        self.as_ptr()
-    }
-
-    pub fn third_handshake(&mut self, response_ack_seq: u32, response_seq: u32) -> *const c_void {
-        unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
-            tcp_head.set_ack(1);
-            tcp_head.seq = response_ack_seq;
-            tcp_head.ack_seq = (response_seq.to_host() + 1).to_network();
-        }
-
-        self.as_ptr()
-    }
-
-    pub fn reply_packet(&mut self, response_seq: u32, response_ack: u32, data_size: u32) -> *const c_void {
-        let response_seq = response_seq.to_host();
-
-        unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
-
-            tcp_head.set_ack(1);
-            tcp_head.seq = response_ack;
-            tcp_head.ack_seq = (response_seq + data_size).to_network();
-        }
-
-        self.as_ptr()
-    }
-
-    pub fn fin_packet(&mut self, controller: &Controller) -> *const c_void {
-        unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
-
-            tcp_head.set_fin(1);
-            tcp_head.seq = (*controller.last_seq_number.read()).to_network();
-        }
-
-        self.as_ptr()
     }
 }
 

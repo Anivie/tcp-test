@@ -1,21 +1,23 @@
 #![feature(cstr_count_bytes)]
 #![feature(let_chains)]
-// #![feature(lazy_cell)]
+#![feature(lazy_cell)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
+use std::any::Any;
 use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use colored::Colorize;
+use dashmap::DashMap;
 use parking_lot::lock_api::RwLock;
 use rand::random;
 use tracing::{info, Level};
 
 use crate::cmd_controller::cmd_controller::commandline_listener;
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
-use crate::tcp::data::Controller;
 use crate::tcp::main_loop::{receive_packet, send_packet};
+use crate::tcp::packet::data::Controller;
 use crate::tcp::util::ChangingOrderSizes;
 
 mod raw_bindings;
@@ -25,11 +27,12 @@ mod cmd_controller;
 const REMOTE_ADDRESS: &str = "127.0.0.1";
 const REMOTE_PORT: u16 = 65534;
 
-/*static GLOBAL_MAP:LazyLock<RwLock<parking_lot::RawRwLock, DashMap<String, i32>>>  = LazyLock::new(|| {
+static GLOBAL_MAP: LazyLock<RwLock<parking_lot::RawRwLock, DashMap<&str, Box<dyn Any + Send + Sync>>>>  = LazyLock::new(|| {
     RwLock::new(DashMap::default())
 });
-*/
+
 #[tokio::main]
+#[cfg(target_os = "linux")]
 async fn main() {
     tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)

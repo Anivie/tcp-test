@@ -8,10 +8,10 @@ use colored::Colorize;
 use tokio::sync::watch;
 use tracing::{info, warn};
 
+use crate::{GLOBAL_MAP, REMOTE_PORT};
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
-use crate::REMOTE_PORT;
-use crate::tcp::data::{Controller, ReceiveData};
-use crate::tcp::tcp_packet::TCPPacket;
+use crate::tcp::packet::data::{Controller, ReceiveData};
+use crate::tcp::packet::tcp_packet::TCPPacket;
 use crate::tcp::util::ChangingOrderSizes;
 
 macro_rules! spawn_listener {
@@ -46,7 +46,8 @@ pub async fn receive_packet(controller: Controller) {
     spawn_listener!(controller, receiver, [
         third_handshake_listener,
         data_listener,
-        packet_printer
+        packet_printer,
+        fourth_handshake_listener
     ]);
 
     tokio::spawn(async move {
@@ -80,7 +81,7 @@ pub async fn receive_packet(controller: Controller) {
                 let source_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
                 let destination_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.dest.to_host();
                 if source_port == controller.local_port {
-                    info!("{}", "Received packet from me, thrown.".truecolor(25, 160, 60));
+                    info!("{}", format!("Received packet from me({}), thrown.", source_port).truecolor(25, 160, 60));
                     continue;
                 }
 
@@ -99,7 +100,6 @@ pub async fn receive_packet(controller: Controller) {
 
                 (ip_head, tcp_head)
             };
-            info!("{}", format!("Receive {} size packet.", receive_size).blue());
 
             unsafe {
                 *controller.last_ack_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host();
@@ -109,6 +109,7 @@ pub async fn receive_packet(controller: Controller) {
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,
                 tcphdr: tcp_head,
+                packet_size: receive_size as usize,
                 data: unsafe {
                     let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
                     if data_size != 0 {
@@ -124,6 +125,8 @@ pub async fn receive_packet(controller: Controller) {
 
 pub async fn send_packet(controller: Controller) {
     let mut packet = TCPPacket::default::<_, String>(controller.address_to_remote, None, controller.local_port).unwrap();
+
+    GLOBAL_MAP.write().insert("enable_thrid-shaking", Box::new(true));
 
     unsafe {
         let sent_size = sendto(

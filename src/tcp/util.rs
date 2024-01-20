@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::raw_bindings::raw_bindings::{htonl, htons, ntohl, ntohs};
-use crate::tcp::data::ReceiveData;
+use crate::tcp::packet::data::ReceiveData;
 
 pub trait ToAddress {
     fn to_address(&self) -> Option<(u16, &str)>;

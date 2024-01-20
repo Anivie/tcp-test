@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::sync::watch::Receiver;
 use tokio::time;
 
-use crate::tcp::data::{Controller, ReceiveData};
+use crate::tcp::packet::data::{Controller, ReceiveData};
 
 pub mod receive_processor;
 
