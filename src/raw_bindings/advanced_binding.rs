@@ -11,7 +11,7 @@ use std::mem::size_of;
 use colored::Colorize;
 use rand::random;
 
-use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{in_addr, inet_addr, inet_ntoa, iphdr, IPPROTO_TCP, sockaddr_in, tcphdr, tcphdr__bindgen_ty_1__bindgen_ty_2};
 use crate::tcp::util::ChangingOrderSizes;
 
 impl iphdr {
@@ -100,6 +100,36 @@ impl Display for tcphdr {
                     self.__bindgen_anon_1.__bindgen_anon_2.window.to_host(),
                     self.__bindgen_anon_1.__bindgen_anon_2.check,
                     self.__bindgen_anon_1.__bindgen_anon_2.urg_ptr
+                ).truecolor(27, 159, 125)
+            )
+        }
+    }
+}
+
+impl Display for tcphdr__bindgen_ty_1__bindgen_ty_2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        unsafe {
+            write!(
+                f,
+                "{}",
+                format!(
+                    "TCP head: {{source: {}, dest: {}, seq: {}, ack_seq: {}, res1: {}, doff: {}, fin: {}, syn: {}, rst: {}, psh: {}, ack: {}, urg: {}, res2: {}, window: {}, check: {}, urg_ptr: {}}}",
+                    self.source.to_host(),
+                    self.dest.to_host(),
+                    self.seq.to_host(),
+                    self.ack_seq.to_host(),
+                    self.res1(),
+                    self.doff(),
+                    self.fin(),
+                    self.syn(),
+                    self.rst(),
+                    self.psh(),
+                    self.ack(),
+                    self.urg(),
+                    self.res2(),
+                    self.window.to_host(),
+                    self.check,
+                    self.urg_ptr
                 ).truecolor(27, 159, 125)
             )
         }

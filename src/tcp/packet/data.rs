@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use parking_lot::RwLock;
 
-use crate::raw_bindings::raw_bindings::{iphdr, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{iphdr, sockaddr_in, tcphdr__bindgen_ty_1__bindgen_ty_2};
 
 #[derive(Debug)]
 pub struct PseudoHeader {
@@ -30,7 +30,7 @@ impl Default for SpacilProcessor {
 #[derive(Default)]
 pub struct ReceiveData {
     pub(crate) iphdr: iphdr,
-    pub(crate) tcphdr: tcphdr,
+    pub(crate) tcphdr: tcphdr__bindgen_ty_1__bindgen_ty_2,
     pub(crate) packet_size: usize,
     pub(crate) data: Option<Vec<u8>>,
 }

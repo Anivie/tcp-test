@@ -7,11 +7,10 @@ use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 impl Controller {
     pub async fn third_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::InitHandshake, |receiver| {
-            let receiver = unsafe { &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2 };
 
-            if receiver.syn() == 1 && receiver.ack() == 1 {
+            if receiver.tcphdr.syn() == 1 && receiver.tcphdr.ack() == 1 {
                 info!("{}", "Secondary handshake packet found, tertiary handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = self.make_packet_with_none().to_third_handshake(receiver.ack_seq, receiver.seq);
+                let mut packet = self.make_packet_with_none().to_third_handshake(receiver.tcphdr.ack_seq, receiver.tcphdr.seq);
 
                 let sent_size = self.send_packet(&mut packet);
 
@@ -44,8 +43,7 @@ impl Controller {
                     .truecolor(10, 163, 250)
                 );
                 let mut packet = unsafe {
-                    let receiver = &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
-                    self.make_packet_with_none().to_reply_packet(receiver.seq, receiver.ack_seq, data.len() as u32)
+                    self.make_packet_with_none().to_reply_packet(receiver.tcphdr.seq, receiver.tcphdr.ack_seq, data.len() as u32)
                 };
 
                 let sent_size = self.send_packet(&mut packet);
@@ -57,12 +55,9 @@ impl Controller {
 
     pub async fn fourth_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::WaveHandshake, |receiver| {
-            let receiver = unsafe {
-                &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2
-            };
-            if receiver.fin() == 1 || receiver.ack() == 1 {
+            if receiver.tcphdr.fin() == 1 || receiver.tcphdr.ack() == 1 {
                 info!("{}", "FIN-ACK handshake packet found, FIN-FINAL handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.fin(), receiver.ack_seq, receiver.seq);
+                let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.tcphdr.fin(), receiver.tcphdr.ack_seq, receiver.tcphdr.seq);
 
                 let sent_size = self.send_packet(&mut packet);
 

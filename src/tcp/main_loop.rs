@@ -96,7 +96,9 @@ pub async fn receive_packet(controller: Controller) {
 
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,
-                tcphdr: tcp_head,
+                tcphdr: unsafe {
+                    tcp_head.__bindgen_anon_1.__bindgen_anon_2
+                },
                 packet_size: receive_size as usize,
                 data: unsafe {
                     let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
