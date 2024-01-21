@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use crate::raw_bindings::raw_bindings::{sendto, sockaddr, sockaddr_in};
-use crate::tcp::packet::data::Controller;
+use crate::tcp::packet::data::{Controller, SpacilProcessor};
 use crate::tcp::packet::tcp_packet::TCPPacket;
 use crate::tcp::util::ChangingOrderSizes;
 
@@ -12,6 +12,23 @@ impl Controller {
 
     pub fn make_packet_with_none(&self) -> TCPPacket {
         TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap()
+    }
+
+    pub fn send_packet_spacial(&self, tcppacket: &mut TCPPacket, spacial: SpacilProcessor) -> isize {
+        let sent_size = unsafe {
+            sendto(
+                self.socket,
+                tcppacket.as_ptr(),
+                tcppacket.len(),
+                0,
+                &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
+                size_of::<sockaddr>() as u32
+            )
+        };
+        let mut guard = self.spacil.write();
+        *guard = spacial;
+
+        sent_size
     }
 
     pub fn send_packet(&self, tcppacket: &mut TCPPacket) -> isize {

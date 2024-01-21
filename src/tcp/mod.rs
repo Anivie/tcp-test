@@ -1,3 +1,4 @@
+#[macro_use]
 pub mod util;
 pub mod main_loop;
 mod worker;

@@ -17,7 +17,7 @@ use tracing::{info, Level};
 use crate::cmd_controller::cmd_controller::commandline_listener;
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_pton, IP_HDRINCL, IPPROTO_IP, IPPROTO_TCP, setsockopt, SOCK_RAW, sockaddr_in, socket};
 use crate::tcp::main_loop::{receive_packet, send_packet};
-use crate::tcp::packet::data::Controller;
+use crate::tcp::packet::data::{Controller, SpacilProcessor};
 use crate::tcp::util::ChangingOrderSizes;
 
 mod raw_bindings;
@@ -83,6 +83,7 @@ async fn main() {
         address_to_remote: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
         last_ack_number: Arc::new(RwLock::new(0)),
         last_seq_number: Arc::new(RwLock::new(0)),
+        spacil: Arc::new(RwLock::new(SpacilProcessor::None)),
     };
 
     let receive_coroutine = tokio::spawn(receive_packet(control.clone()));

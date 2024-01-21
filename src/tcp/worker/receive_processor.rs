@@ -1,23 +1,13 @@
 use colored::Colorize;
 use log::info;
-use tokio::io::AsyncReadExt;
 use tokio::sync::watch::Receiver;
 
-use crate::GLOBAL_MAP;
-use crate::tcp::packet::data::{Controller, ReceiveData};
+use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 
 impl Controller {
     pub async fn third_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
-        self.process_receiver(receiver, |receiver| unsafe {
-            if let Some(value) = GLOBAL_MAP.read().get("enable_thrid-shaking") {
-                if !value.value().downcast_ref::<bool>().is_some() {
-                    return;
-                }
-            }else {
-                return;
-            }
-
-            let receiver = &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
+        processor!(self, receiver, SpacilProcessor::InitHandshake, |receiver| {
+            let receiver = unsafe { &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2 };
 
             if receiver.syn() == 1 && receiver.ack() == 1 {
                 info!("{}", "Secondary handshake packet found, tertiary handshake packet being sent......".truecolor(200, 35, 55));
@@ -26,24 +16,24 @@ impl Controller {
                 let sent_size = self.send_packet(&mut packet);
 
                 info!("third_handshake send: {}, with size: {}", packet, sent_size);
-                GLOBAL_MAP.write().insert("enable_thrid-shaking", Box::new(false));
+                *self.spacil.write() = SpacilProcessor::None;
             }
-        }).await;
+        });
     }
 
     pub async fn packet_printer(&self, receiver: Receiver<Option<ReceiveData>>) {
-        self.process_receiver(receiver, |receiver| {
+        processor!(self, receiver, SpacilProcessor::None, |receiver| {
             let mut string = String::new();
             string.push_str(format!("Received packet with size{}: {{\n", receiver.packet_size).as_str());
             string.push_str(format!("  received ip head: {}\n", receiver.iphdr).as_str());
             string.push_str(format!("  received tcp head: {}\n", receiver.tcphdr).as_str());
             string.push_str("}\n");
             tracing::info!("{}", string.truecolor(170, 170, 170));
-        }).await;
+        })
     }
 
     pub async fn data_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
-        self.process_receiver(receiver, |receiver| {
+        processor!(self, receiver, SpacilProcessor::None, |receiver| {
             if let Some(data) = &receiver.data {
                 let tmp = String::from_utf8_lossy(data);
                 info!(
@@ -62,20 +52,14 @@ impl Controller {
 
                 tracing::info!("data ack packet send: {}, with size: {}", packet, sent_size);
             }
-        }).await;
+        })
     }
 
     pub async fn fourth_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
-        self.process_receiver(receiver, |receiver| unsafe {
-            if let Some(value) = GLOBAL_MAP.read().get("enable_fin-shaking") {
-                if !value.value().downcast_ref::<bool>().is_some() {
-                    return;
-                }
-            }else {
-                return;
-            }
-
-            let receiver = &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
+        processor!(self, receiver, SpacilProcessor::WaveHandshake, |receiver| {
+            let receiver = unsafe {
+                &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2
+            };
             if receiver.fin() == 1 || receiver.ack() == 1 {
                 info!("{}", "FIN-ACK handshake packet found, FIN-FINAL handshake packet being sent......".truecolor(200, 35, 55));
                 let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.fin(), receiver.ack_seq, receiver.seq);
@@ -83,8 +67,7 @@ impl Controller {
                 let sent_size = self.send_packet(&mut packet);
 
                 tracing::info!("fourth_handshake send: {}, with size: {}", packet, sent_size);
-                // GLOBAL_MAP.write().insert("enable_fin-shaking", Box::new(false));
             }
-        }).await;
+        })
     }
 }

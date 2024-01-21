@@ -9,22 +9,10 @@ use log::trace;
 use tokio::sync::watch;
 use tracing::info;
 
-use crate::{GLOBAL_MAP, REMOTE_PORT};
 use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sockaddr, sockaddr_in, tcphdr};
+use crate::REMOTE_PORT;
 use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 use crate::tcp::util::ChangingOrderSizes;
-
-macro_rules! spawn_listener {
-    ($controller:expr, $receiver:expr, [$($func:ident),*]) => {
-        $(
-            let receiver_inner = $receiver.clone();
-            let controller_inner = $controller.clone();
-            tokio::spawn(async move {
-                controller_inner.$func(receiver_inner).await;
-            });
-        )*
-    };
-}
 
 pub async fn receive_packet(controller: Controller) {
     let mut sockaddr_in = unsafe {
@@ -110,7 +98,6 @@ pub async fn receive_packet(controller: Controller) {
                 iphdr: ip_head,
                 tcphdr: tcp_head,
                 packet_size: receive_size as usize,
-                spacil: SpacilProcessor::None,
                 data: unsafe {
                     let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
                     if data_size != 0 {
@@ -126,10 +113,7 @@ pub async fn receive_packet(controller: Controller) {
 
 pub async fn send_packet(controller: Controller) {
     let mut packet = controller.make_packet::<String>(None).to_first_handshake();
-    // let mut packet = TCPPacket::default::<_, String>(controller.address_to_remote, None, controller.local_port).unwrap();
-    // packet.to_first_handshake();
-
-    GLOBAL_MAP.write().insert("enable_thrid-shaking", Box::new(true));
+    *controller.spacil.write() = SpacilProcessor::InitHandshake;
     let sent_size = controller.send_packet(&mut packet);
 
     info!("Send second: {}, with size: {}", packet, sent_size);

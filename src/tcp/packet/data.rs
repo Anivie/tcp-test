@@ -14,6 +14,7 @@ pub struct PseudoHeader {
     pub tcp_length: u16,
 }
 
+#[derive(PartialEq)]
 pub enum SpacilProcessor {
     InitHandshake,
     WaveHandshake,
@@ -32,7 +33,6 @@ pub struct ReceiveData {
     pub(crate) tcphdr: tcphdr,
     pub(crate) packet_size: usize,
     pub(crate) data: Option<Vec<u8>>,
-    pub(crate) spacil: SpacilProcessor,
 }
 
 #[derive(Clone)]
@@ -42,5 +42,6 @@ pub struct Controller {
     pub sockaddr_to_remote: sockaddr_in,
     pub address_to_remote: String,
     pub last_ack_number: Arc<RwLock<u32>>,
-    pub last_seq_number: Arc<RwLock<u32>>
+    pub last_seq_number: Arc<RwLock<u32>>,
+    pub spacil: Arc<RwLock<SpacilProcessor>>,
 }

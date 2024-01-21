@@ -21,7 +21,6 @@ impl<T: AsRef<str>> ToAddress for T {
         Some((port, addr))
     }
 }
-
 impl Display for ReceiveData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
@@ -67,4 +66,16 @@ impl ChangingOrderSizes<u32> for u32{
             ntohl(self)
         }
     }
+}
+
+macro_rules! spawn_listener {
+    ($controller:expr, $receiver:expr, [$($func:ident),*]) => {
+        $(
+            let receiver_inner = $receiver.clone();
+            let controller_inner = $controller.clone();
+            tokio::spawn(async move {
+                controller_inner.$func(receiver_inner).await;
+            });
+        )*
+    };
 }
