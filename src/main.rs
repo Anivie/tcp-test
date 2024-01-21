@@ -35,7 +35,7 @@ static GLOBAL_MAP: LazyLock<RwLock<parking_lot::RawRwLock, DashMap<&str, Box<dyn
 #[cfg(target_os = "linux")]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_max_level(Level::TRACE)
+        .with_max_level(Level::INFO)
         .init();
 
     let socket = unsafe {

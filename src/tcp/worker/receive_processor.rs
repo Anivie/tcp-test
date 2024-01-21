@@ -1,14 +1,10 @@
-use std::mem::size_of;
-
 use colored::Colorize;
 use log::info;
 use tokio::io::AsyncReadExt;
 use tokio::sync::watch::Receiver;
 
 use crate::GLOBAL_MAP;
-use crate::raw_bindings::raw_bindings::{sendto, sockaddr, sockaddr_in};
 use crate::tcp::packet::data::{Controller, ReceiveData};
-use crate::tcp::packet::tcp_packet::TCPPacket;
 
 impl Controller {
     pub async fn third_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
@@ -25,21 +21,11 @@ impl Controller {
 
             if receiver.syn() == 1 && receiver.ack() == 1 {
                 info!("{}", "Secondary handshake packet found, tertiary handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap();
+                let mut packet = self.make_packet_with_none().to_third_handshake(receiver.ack_seq, receiver.seq);
 
-                let sent_size = sendto(
-                    self.socket,
-                    packet.third_handshake(
-                        receiver.ack_seq,
-                        receiver.seq,
-                    ),
-                    packet.len(),
-                    0,
-                    &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-                    size_of::<sockaddr>() as u32
-                );
+                let sent_size = self.send_packet(&mut packet);
 
-                tracing::info!("third_handshake send: {}, with size: {}", packet, sent_size);
+                info!("third_handshake send: {}, with size: {}", packet, sent_size);
                 GLOBAL_MAP.write().insert("enable_thrid-shaking", Box::new(false));
             }
         }).await;
@@ -67,22 +53,12 @@ impl Controller {
                     .replace("\n", "")
                     .truecolor(10, 163, 250)
                 );
-                let mut packet = TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap();
-
-                let sent_size = unsafe {
-                    sendto(
-                        self.socket,
-                        packet.reply_packet(
-                            receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq,
-                            receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq,
-                            data.len() as u32
-                        ),
-                        packet.len(),
-                        0,
-                        &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-                        size_of::<sockaddr>() as u32,
-                    )
+                let mut packet = unsafe {
+                    let receiver = &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
+                    self.make_packet_with_none().to_reply_packet(receiver.seq, receiver.ack_seq, data.len() as u32)
                 };
+
+                let sent_size = self.send_packet(&mut packet);
 
                 tracing::info!("data ack packet send: {}, with size: {}", packet, sent_size);
             }
@@ -102,20 +78,9 @@ impl Controller {
             let receiver = &receiver.tcphdr.__bindgen_anon_1.__bindgen_anon_2;
             if receiver.fin() == 1 || receiver.ack() == 1 {
                 info!("{}", "FIN-ACK handshake packet found, FIN-FINAL handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap();
+                let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.fin(), receiver.ack_seq, receiver.seq);
 
-                let sent_size = sendto(
-                    self.socket,
-                    packet.fourth_handshake(
-                        receiver.fin(),
-                        receiver.ack_seq,
-                        receiver.seq,
-                    ),
-                    packet.len(),
-                    0,
-                    &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-                    size_of::<sockaddr>() as u32
-                );
+                let sent_size = self.send_packet(&mut packet);
 
                 tracing::info!("fourth_handshake send: {}, with size: {}", packet, sent_size);
                 // GLOBAL_MAP.write().insert("enable_fin-shaking", Box::new(false));

@@ -1,12 +1,8 @@
-use std::mem::size_of;
-
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 
 use crate::GLOBAL_MAP;
-use crate::raw_bindings::raw_bindings::{sendto, sockaddr, sockaddr_in};
 use crate::tcp::packet::data::Controller;
-use crate::tcp::packet::tcp_packet::TCPPacket;
 
 async fn read_user_input(reader: &mut BufReader<Stdin>, buffer: &mut String) -> io::Result<String> {
     reader.read_line(buffer).await?;
@@ -21,17 +17,8 @@ pub async fn commandline_listener(controller: Controller) {
 
         match input.as_str() {
             "exit" => {
-                let mut packet = TCPPacket::default::<_, String>(&controller.address_to_remote, None, controller.local_port).unwrap();
-                let sent_size = unsafe {
-                    sendto(
-                        controller.socket,
-                        packet.fin_packet(),
-                        packet.len(),
-                        0,
-                        &controller.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-                        size_of::<sockaddr>() as u32,
-                    )
-                };
+                let mut packet = controller.make_packet_with_none().to_fin_packet();
+                let sent_size = controller.send_packet(&mut packet);
 
                 tracing::info!("fin data send: {}, with size: {}", packet, sent_size);
                 GLOBAL_MAP.write().insert("enable_fin-shaking", Box::new(true));

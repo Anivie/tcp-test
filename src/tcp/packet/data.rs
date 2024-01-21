@@ -14,12 +14,25 @@ pub struct PseudoHeader {
     pub tcp_length: u16,
 }
 
+pub enum SpacilProcessor {
+    InitHandshake,
+    WaveHandshake,
+    None
+}
+
+impl Default for SpacilProcessor {
+    fn default() -> Self {
+        SpacilProcessor::None
+    }
+}
+
 #[derive(Default)]
 pub struct ReceiveData {
-    pub iphdr: iphdr,
-    pub tcphdr: tcphdr,
-    pub packet_size: usize,
-    pub data: Option<Vec<u8>>,
+    pub(crate) iphdr: iphdr,
+    pub(crate) tcphdr: tcphdr,
+    pub(crate) packet_size: usize,
+    pub(crate) data: Option<Vec<u8>>,
+    pub(crate) spacil: SpacilProcessor,
 }
 
 #[derive(Clone)]

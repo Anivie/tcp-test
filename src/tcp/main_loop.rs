@@ -5,13 +5,13 @@ use std::sync::Arc;
 
 use bytes::BytesMut;
 use colored::Colorize;
+use log::trace;
 use tokio::sync::watch;
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::{GLOBAL_MAP, REMOTE_PORT};
-use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sendto, sockaddr, sockaddr_in, tcphdr};
-use crate::tcp::packet::data::{Controller, ReceiveData};
-use crate::tcp::packet::tcp_packet::TCPPacket;
+use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sockaddr, sockaddr_in, tcphdr};
+use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 use crate::tcp::util::ChangingOrderSizes;
 
 macro_rules! spawn_listener {
@@ -74,20 +74,20 @@ pub async fn receive_packet(controller: Controller) {
                 let ip_head = *(buffer.as_ptr() as *const iphdr);
                 let tcp_head = *(buffer.as_ptr().offset(size_of::<iphdr>() as isize) as *const tcphdr);
                 if ip_head.protocol != 6 {
-                    warn!("{}", "Received packet is not a TCP packet, thrown.".truecolor(25, 160, 60));
+                    trace!("{}", "Received packet is not a TCP packet, thrown.".truecolor(25, 160, 60));
                     continue;
                 }
 
                 let source_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.source.to_host();
                 let destination_port = tcp_head.__bindgen_anon_1.__bindgen_anon_2.dest.to_host();
                 if source_port == controller.local_port {
-                    info!("{}", format!("Received packet from me({}), thrown.", source_port).truecolor(25, 160, 60));
+                    trace!("{}", format!("Received packet from me({}), thrown.", source_port).truecolor(25, 160, 60));
                     continue;
                 }
 
                 if !(source_port == controller.local_port && destination_port == REMOTE_PORT) &&
                     !(source_port == REMOTE_PORT && destination_port == controller.local_port) {
-                    info!(
+                    trace!(
                         "{}",
                         format!(
                             "Received packet does not match the required ports({} to {}), thrown.",
@@ -110,6 +110,7 @@ pub async fn receive_packet(controller: Controller) {
                 iphdr: ip_head,
                 tcphdr: tcp_head,
                 packet_size: receive_size as usize,
+                spacil: SpacilProcessor::None,
                 data: unsafe {
                     let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
                     if data_size != 0 {
@@ -124,20 +125,12 @@ pub async fn receive_packet(controller: Controller) {
 }
 
 pub async fn send_packet(controller: Controller) {
-    let mut packet = TCPPacket::default::<_, String>(controller.address_to_remote, None, controller.local_port).unwrap();
+    let mut packet = controller.make_packet::<String>(None).to_first_handshake();
+    // let mut packet = TCPPacket::default::<_, String>(controller.address_to_remote, None, controller.local_port).unwrap();
+    // packet.to_first_handshake();
 
     GLOBAL_MAP.write().insert("enable_thrid-shaking", Box::new(true));
+    let sent_size = controller.send_packet(&mut packet);
 
-    unsafe {
-        let sent_size = sendto(
-            controller.socket,
-            packet.first_handshake(),
-            packet.len(),
-            0,
-            &controller.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-            size_of::<sockaddr>() as u32
-        );
-
-        info!("Send: {}, with size: {}", packet, sent_size);
-    }
+    info!("Send second: {}, with size: {}", packet, sent_size);
 }
