@@ -1,7 +1,7 @@
 use tokio::io;
 use tokio::io::{AsyncBufReadExt, BufReader, Stdin};
 
-use crate::tcp::packet::data::{Controller, SpacilProcessor};
+use crate::tcp::packet::data::Controller;
 
 async fn read_user_input(reader: &mut BufReader<Stdin>, buffer: &mut String) -> io::Result<String> {
     reader.read_line(buffer).await?;
@@ -17,7 +17,7 @@ pub async fn commandline_listener(controller: Controller) {
         match input.as_str() {
             "exit" => {
                 let mut packet = controller.make_packet_with_none().to_fin_packet();
-                *controller.spacil.write() = SpacilProcessor::WaveHandshake;
+                // *controller.spacil.write() = SpacilProcessor::WaveHandshake;
                 let sent_size = controller.send_packet(&mut packet);
 
                 tracing::info!("fin data send: {}, with size: {}", packet, sent_size);

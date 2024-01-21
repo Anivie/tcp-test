@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use std::mem::size_of;
 use std::os::raw::c_void;
 use std::sync::Arc;
@@ -9,24 +8,13 @@ use log::trace;
 use tokio::sync::watch;
 use tracing::info;
 
-use crate::raw_bindings::raw_bindings::{AF_INET, in_addr, inet_addr, iphdr, recvfrom, sockaddr, sockaddr_in, tcphdr};
+use crate::raw_bindings::raw_bindings::{iphdr, recvfrom, sockaddr, sockaddr_in, tcphdr};
 use crate::REMOTE_PORT;
 use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 use crate::tcp::util::ChangingOrderSizes;
 
 pub async fn receive_packet(controller: Controller) {
-    let mut sockaddr_in = unsafe {
-        let addr = CString::new("127.0.0.1").unwrap();
-
-        sockaddr_in {
-            sin_family: AF_INET as u16,
-            sin_port: controller.local_port.to_network(),
-            sin_addr: in_addr {
-                s_addr: inet_addr(addr.as_ptr()),
-            },
-            sin_zero: [0; 8],
-        }
-    };
+    let mut sockaddr_in = sockaddr_in::default();
 
     let (sender, receiver) = watch::channel(None);
     let controller = Arc::new(controller);
