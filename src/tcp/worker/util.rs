@@ -8,7 +8,7 @@ use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 
 macro_rules! processor {
     ($self:ident, $receiver:expr, $spacil:expr, $f:expr) => {
-        $self.process_receiver($receiver, $spacil, $f).await;
+        $self.process_receiver($receiver, $spacil, $f).await
     };
 }
 

@@ -3,7 +3,6 @@
 // #![feature(lazy_cell)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
-use std::any::Any;
 use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
 use std::sync::Arc;

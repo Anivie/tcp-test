@@ -15,20 +15,8 @@ impl Controller {
     }
 
     pub fn send_packet_spacial(&self, tcppacket: &mut TCPPacket, spacial: SpacilProcessor) -> isize {
-        let sent_size = unsafe {
-            sendto(
-                self.socket,
-                tcppacket.as_ptr(),
-                tcppacket.len(),
-                0,
-                &self.sockaddr_to_remote as *const sockaddr_in as *const sockaddr,
-                size_of::<sockaddr>() as u32
-            )
-        };
-        let mut guard = self.spacil.write();
-        *guard = spacial;
-
-        sent_size
+        *self.spacil.write() = spacial;
+        self.send_packet(tcppacket)
     }
 
     pub fn send_packet(&self, tcppacket: &mut TCPPacket) -> isize {
@@ -57,7 +45,7 @@ impl TCPPacket {
 
     pub fn to_third_handshake(mut self, response_ack_seq: u32, response_seq: u32) -> TCPPacket {
         unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
             tcp_head.set_ack(1);
             tcp_head.seq = response_ack_seq;
             tcp_head.ack_seq = (response_seq.to_host() + 1).to_network();
@@ -68,7 +56,7 @@ impl TCPPacket {
 
     pub fn to_fourth_handshake(mut self, response_fin: u16, response_ack_seq: u32, response_seq: u32) -> TCPPacket {
         unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
             tcp_head.set_ack(1);
 
             tcp_head.seq = response_ack_seq;
@@ -83,7 +71,7 @@ impl TCPPacket {
         let response_seq = response_seq.to_host();
 
         unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
 
             tcp_head.set_ack(1);
             tcp_head.seq = response_ack;
@@ -95,7 +83,7 @@ impl TCPPacket {
 
     pub fn to_fin_packet(mut self) -> TCPPacket {
         unsafe {
-            let mut tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+            let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
 
             tcp_head.set_fin(1);
             tcp_head.set_ack(1);

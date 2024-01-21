@@ -103,8 +103,7 @@ pub async fn receive_packet(controller: Controller) {
 
 pub async fn send_packet(controller: Controller) {
     let mut packet = controller.make_packet::<String>(None).to_first_handshake();
-    *controller.spacil.write() = SpacilProcessor::InitHandshake;
-    let sent_size = controller.send_packet(&mut packet);
+    let sent_size = controller.send_packet_spacial(&mut packet, SpacilProcessor::InitHandshake);
 
     info!("Send second: {}, with size: {}", packet, sent_size);
 }

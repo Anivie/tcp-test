@@ -42,9 +42,9 @@ impl Controller {
                     .replace("\n", "")
                     .truecolor(10, 163, 250)
                 );
-                let mut packet = unsafe {
-                    self.make_packet_with_none().to_reply_packet(receiver.tcphdr.seq, receiver.tcphdr.ack_seq, data.len() as u32)
-                };
+                let mut packet = self
+                                                .make_packet_with_none()
+                                                .to_reply_packet(receiver.tcphdr.seq, receiver.tcphdr.ack_seq, data.len() as u32);
 
                 let sent_size = self.send_packet(&mut packet);
 
