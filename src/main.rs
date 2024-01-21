@@ -1,15 +1,14 @@
 #![feature(cstr_count_bytes)]
 #![feature(let_chains)]
-#![feature(lazy_cell)]
+// #![feature(lazy_cell)]
 #![cfg_attr(debug_assertions, allow(warnings))]
 
 use std::any::Any;
 use std::ffi::{c_int, CString};
 use std::os::raw::c_void;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use colored::Colorize;
-use dashmap::DashMap;
 use parking_lot::lock_api::RwLock;
 use rand::random;
 use tracing::{info, Level};
@@ -27,10 +26,11 @@ mod cmd_controller;
 const REMOTE_ADDRESS: &str = "127.0.0.1";
 const REMOTE_PORT: u16 = 65534;
 
+/*
 static GLOBAL_MAP: LazyLock<RwLock<parking_lot::RawRwLock, DashMap<&str, Box<dyn Any + Send + Sync>>>>  = LazyLock::new(|| {
     RwLock::new(DashMap::default())
 });
-
+*/
 #[tokio::main]
 #[cfg(target_os = "linux")]
 async fn main() {
