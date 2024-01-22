@@ -41,7 +41,7 @@ pub struct Controller {
     pub local_port: u16,
     pub sockaddr_to_remote: sockaddr_in,
     pub address_to_remote: String,
-    pub last_ack_number: Arc<RwLock<u32>>,
+    pub last_ack_seq_number: Arc<RwLock<u32>>,
     pub last_seq_number: Arc<RwLock<u32>>,
     pub spacil: Arc<RwLock<SpacilProcessor>>,
 }

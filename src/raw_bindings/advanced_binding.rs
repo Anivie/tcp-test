@@ -60,7 +60,7 @@ impl tcphdr {
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.dest = destination_port.to_network();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.seq = (random::<u32>() % 4294967295).to_network();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.ack_seq = 0_u32.to_network();
-            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 5840_u16.to_network();
+            tcphdr.__bindgen_anon_1.__bindgen_anon_2.window = 65495_u16.to_network();
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_doff(5);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_fin(0);
             tcphdr.__bindgen_anon_1.__bindgen_anon_2.set_syn(0);

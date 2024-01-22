@@ -80,7 +80,7 @@ async fn main() {
         local_port: port,
         sockaddr_to_remote: sockaddr_to,
         address_to_remote: format!("{}:{}", REMOTE_ADDRESS, REMOTE_PORT),
-        last_ack_number: Arc::new(RwLock::new(0)),
+        last_ack_seq_number: Arc::new(RwLock::new(0)),
         last_seq_number: Arc::new(RwLock::new(0)),
         spacil: Arc::new(RwLock::new(SpacilProcessor::None)),
     };

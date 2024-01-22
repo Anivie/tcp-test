@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::ffi::{c_void, CString};
 use std::fmt::{Display, Formatter};
 use std::mem::size_of;
@@ -25,6 +26,8 @@ impl Display for TCPPacket {
     }
 }
 
+const LINE_BREAK: &[u8] = &[10];// \n
+
 impl TCPPacket {
     pub fn default<A, T>(destination_address: A, data: Option<T>, source_port: u16) -> Result<TCPPacket, String>
     where A: ToAddress,
@@ -35,6 +38,8 @@ impl TCPPacket {
         let data = match data {
             None => { CString::default() }
             Some(data) => {
+                let mut data: Vec<u8> = data.try_into().map_err(|e: Infallible| e.to_string())?;
+                data.extend_from_slice(LINE_BREAK);
                 CString::new(data).map_err(|e| e.to_string())?
             }
         };
@@ -137,7 +142,7 @@ impl TCPPacket {
             );
             offset += size_of::<tcphdr>() as isize;
 
-            //第三部分：数据报
+            //第三部分：数据部
             std::ptr::copy(self.data.as_ptr() as *const u8, vec.as_mut_ptr().offset(offset), self.data.count_bytes());
 
             vec

@@ -23,7 +23,7 @@ impl Controller {
     pub async fn packet_printer(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::None, |receiver| {
             let mut string = String::new();
-            string.push_str(format!("Received packet with size{}: {{\n", receiver.packet_size).as_str());
+            string.push_str(format!("Received packet with size {}: {{\n", receiver.packet_size).as_str());
             string.push_str(format!("  received ip head: {}\n", receiver.iphdr).as_str());
             string.push_str(format!("  received tcp head: {}\n", receiver.tcphdr).as_str());
             string.push_str("}\n");
@@ -44,7 +44,7 @@ impl Controller {
                 );
                 let mut packet = self
                                                 .make_packet_with_none()
-                                                .to_reply_packet(receiver.tcphdr.seq, receiver.tcphdr.ack_seq, data.len() as u32);
+                                                .to_data_ack_packet(receiver.tcphdr.seq, receiver.tcphdr.ack_seq, data.len() as u32);
 
                 let sent_size = self.send_packet(&mut packet);
 

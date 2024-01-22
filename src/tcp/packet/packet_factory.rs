@@ -6,14 +6,17 @@ use crate::tcp::packet::tcp_packet::TCPPacket;
 use crate::tcp::util::ChangingOrderSizes;
 
 impl Controller {
-    pub fn make_packet<T: Into<Vec<u8>>>(&self, data: Option<T>) -> TCPPacket {
-        TCPPacket::default(&self.address_to_remote, data, self.local_port).unwrap()
+    #[inline]
+    pub fn make_packet_with_data<T: Into<Vec<u8>>>(&self, data: T) -> TCPPacket {
+        TCPPacket::default(&self.address_to_remote, Some(data), self.local_port).unwrap()
     }
 
+    #[inline]
     pub fn make_packet_with_none(&self) -> TCPPacket {
         TCPPacket::default::<_, String>(&self.address_to_remote, None, self.local_port).unwrap()
     }
 
+    #[inline]
     pub fn send_packet_spacial(&self, tcppacket: &mut TCPPacket, spacial: SpacilProcessor) -> isize {
         *self.spacil.write() = spacial;
         self.send_packet(tcppacket)
@@ -67,7 +70,7 @@ impl TCPPacket {
         self
     }
 
-    pub fn to_reply_packet(mut self, response_seq: u32, response_ack: u32, data_size: u32) -> TCPPacket {
+    pub fn to_data_ack_packet(mut self, response_seq: u32, response_ack: u32, data_size: u32) -> TCPPacket {
         let response_seq = response_seq.to_host();
 
         unsafe {
@@ -81,13 +84,31 @@ impl TCPPacket {
         self
     }
 
-    pub fn to_fin_packet(mut self) -> TCPPacket {
+    pub fn to_data_packet(mut self, response_seq: u32, response_ack: u32) -> TCPPacket {
+        let response_seq = response_seq.to_host();
+
+        unsafe {
+            let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
+
+            tcp_head.set_psh(1);
+            tcp_head.set_ack(1);
+
+            tcp_head.seq = response_ack;
+            tcp_head.ack_seq = response_seq;
+        }
+
+        self
+    }
+
+    pub fn to_fin_packet(mut self, response_seq: u32, response_ack: u32) -> TCPPacket {
         unsafe {
             let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
 
             tcp_head.set_fin(1);
             tcp_head.set_ack(1);
-            tcp_head.ack_seq = 1.to_network();
+
+            tcp_head.ack_seq = response_seq;
+            tcp_head.seq = response_ack;
         }
 
         self

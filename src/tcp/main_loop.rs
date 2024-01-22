@@ -21,8 +21,8 @@ pub async fn receive_packet(controller: Controller) {
 
     spawn_listener!(controller, receiver, [
         third_handshake_listener,
-        data_listener,
         packet_printer,
+        data_listener,
         fourth_handshake_listener
     ]);
 
@@ -77,9 +77,16 @@ pub async fn receive_packet(controller: Controller) {
                 (ip_head, tcp_head)
             };
 
+/*            let mut string = String::new();
+            string.push_str(format!("Received packet with size {}: {{\n", receive_size).as_str());
+            string.push_str(format!("  received ip head: {}\n", ip_head).as_str());
+            string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
+            string.push_str("}\n");
+            info!("{}", string.truecolor(170, 170, 170));
+*/
             unsafe {
-                *controller.last_ack_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq.to_host();
-                *controller.last_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq.to_host();
+                *controller.last_ack_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq;
+                *controller.last_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq;
             }
 
             sender.send(Some(ReceiveData {
@@ -102,8 +109,8 @@ pub async fn receive_packet(controller: Controller) {
 }
 
 pub async fn send_packet(controller: Controller) {
-    let mut packet = controller.make_packet::<String>(None).to_first_handshake();
+    let mut packet = controller.make_packet_with_none().to_first_handshake();
     let sent_size = controller.send_packet_spacial(&mut packet, SpacilProcessor::InitHandshake);
 
-    info!("Send second: {}, with size: {}", packet, sent_size);
+    info!("Send first hand-shake: {}, with size: {}", packet, sent_size);
 }

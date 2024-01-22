@@ -21,7 +21,7 @@ impl Controller {
 
         loop {
             if let Some(r) = receiver.borrow_and_update().deref() {
-                if spacil != *self.spacil.read().deref() {
+                if spacil != SpacilProcessor::None && spacil != *self.spacil.read().deref() {
                     continue;
                 }
 
