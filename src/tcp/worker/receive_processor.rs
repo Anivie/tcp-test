@@ -55,14 +55,17 @@ impl Controller {
 
     pub async fn fourth_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::WaveHandshake, |receiver| {
-            if receiver.tcphdr.fin() == 1 || receiver.tcphdr.ack() == 1 {
+            if receiver.tcphdr.fin() == 1 && receiver.tcphdr.ack() == 1 {
                 info!("{}", "FIN-ACK handshake packet found, FIN-FINAL handshake packet being sent......".truecolor(200, 35, 55));
-                let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.tcphdr.fin(), receiver.tcphdr.ack_seq, receiver.tcphdr.seq);
+                let mut packet = self.make_packet_with_none().to_fourth_handshake(receiver.tcphdr.ack_seq, receiver.tcphdr.seq);
 
                 let sent_size = self.send_packet(&mut packet);
 
                 tracing::info!("fourth_handshake send: {}, with size: {}", packet, sent_size);
+                *self.spacil.write() = SpacilProcessor::None;
+                info!("FIN-ACK success, bye, my dear baby~");
+                std::process::exit(0);
             }
-        })
+        });
     }
 }

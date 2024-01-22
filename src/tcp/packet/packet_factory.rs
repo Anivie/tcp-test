@@ -57,13 +57,12 @@ impl TCPPacket {
         self
     }
 
-    pub fn to_fourth_handshake(mut self, response_fin: u16, response_ack_seq: u32, response_seq: u32) -> TCPPacket {
+    pub fn to_fourth_handshake(mut self, response_ack_seq: u32, response_seq: u32) -> TCPPacket {
         unsafe {
             let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
             tcp_head.set_ack(1);
 
-            tcp_head.seq = response_ack_seq;
-            tcp_head.set_fin(response_fin);
+            tcp_head.seq = (response_ack_seq.to_host() + 1).to_network();
             tcp_head.ack_seq = (response_seq.to_host() + 1).to_network();
         }
 
