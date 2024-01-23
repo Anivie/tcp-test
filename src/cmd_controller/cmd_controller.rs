@@ -21,7 +21,6 @@ pub async fn commandline_listener(controller: Controller) {
                     *controller.last_ack_seq_number.read()
                 );
                 let sent_size = controller.send_packet_spacial(&mut packet, SpacilProcessor::WaveHandshake);
-                // let sent_size = controller.send_packet(&mut packet);
 
                 tracing::info!("fin data send: {}, with size: {}", packet, sent_size);
             }

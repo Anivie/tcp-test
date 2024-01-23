@@ -77,13 +77,6 @@ pub async fn receive_packet(controller: Controller) {
                 (ip_head, tcp_head)
             };
 
-/*            let mut string = String::new();
-            string.push_str(format!("Received packet with size {}: {{\n", receive_size).as_str());
-            string.push_str(format!("  received ip head: {}\n", ip_head).as_str());
-            string.push_str(format!("  received tcp head: {}\n", tcp_head).as_str());
-            string.push_str("}\n");
-            info!("{}", string.truecolor(170, 170, 170));
-*/
             unsafe {
                 *controller.last_ack_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.ack_seq;
                 *controller.last_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq;

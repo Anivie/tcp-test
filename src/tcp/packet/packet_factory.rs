@@ -84,8 +84,6 @@ impl TCPPacket {
     }
 
     pub fn to_data_packet(mut self, response_seq: u32, response_ack: u32) -> TCPPacket {
-        let response_seq = response_seq.to_host();
-
         unsafe {
             let tcp_head = &mut self.tcp_head.__bindgen_anon_1.__bindgen_anon_2;
 
