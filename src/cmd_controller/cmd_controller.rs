@@ -25,6 +25,17 @@ pub async fn commandline_listener(controller: Controller) {
                 tracing::info!("fin data send: {}, with size: {}", packet, sent_size);
             }
 
+            "close" => {
+                let mut packet = controller.make_packet_with_data("close").to_data_packet(
+                    *controller.last_seq_number.read(),
+                    *controller.last_ack_seq_number.read()
+                );
+
+                let sent_size = controller.send_packet_spacial(&mut packet, SpacilProcessor::WaveHandshake);
+                tracing::info!("input data send: {}, with size: {}", packet, sent_size);
+                buffer.clear();
+            }
+
             data => {
                 let mut packet = controller.make_packet_with_data(data.trim()).to_data_packet(
                     *controller.last_seq_number.read(),
