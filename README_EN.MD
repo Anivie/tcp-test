@@ -2,12 +2,11 @@
 
 ## A computer network experiment
 
-Using raw socket, I used (unsafe) rust ffi to complete this function, the process was very tortuous (  
-Currently considered completed, but now it can handshake normally and receive data from server  
-The target connection is tokio's echo demo.
+Using raw sockets, I used (unsafe) Rust FFI to accomplish this functionality. The process was quite convoluted, but I have successfully completed it. It can now perform a handshake and receive information. The target connection is the Tokio echo demo.
 
-This project refers to [this experiment](https://github.com/MaxXor/raw-sockets-example/blob/master/rawsockets.c), and I manually implemented and simplified it using Rust.
-You can run this program directly in Linux using `cargo run`.
+This project was inspired by [this experiment](https://github.com/MaxXor/raw-sockets-example/blob/master/rawsockets.c). I manually implemented it in Rust and added some simple wrappers. You can run this program directly using `cargo run` on Linux.
+
+The test connection target is [TcpListener](https://docs.rs/tokio/1.35.1/tokio/net/struct.TcpListener.html), which I encapsulated into a standalone [server](https://github.com/Anivie/tcp-test-server).
 
 Test environment:
 - Ubuntu (WSL)

@@ -4,7 +4,17 @@ use tokio::sync::watch::Receiver;
 
 use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 
+/// Controller struct implementation
 impl Controller {
+    /// Listens for the third handshake in the TCP connection process.
+    ///
+    /// # Arguments
+    ///
+    /// * `receiver` - A Receiver<Option<ReceiveData>> instance that receives the data.
+    ///
+    /// # Remarks
+    ///
+    /// This function listens for the third handshake in the TCP connection process and sends a tertiary handshake packet when a secondary handshake packet is found.
     pub async fn third_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::InitHandshake, |receiver| {
 
@@ -20,6 +30,15 @@ impl Controller {
         });
     }
 
+    /// Prints the received packet.
+    ///
+    /// # Arguments
+    ///
+    /// * `receiver` - A Receiver<Option<ReceiveData>> instance that receives the data.
+    ///
+    /// # Remarks
+    ///
+    /// This function prints the received packet's size, IP header, and TCP header.
     pub async fn packet_printer(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::None, |receiver| {
             let mut string = String::new();
@@ -31,6 +50,15 @@ impl Controller {
         })
     }
 
+    /// Listens for data from the server.
+    ///
+    /// # Arguments
+    ///
+    /// * `receiver` - A Receiver<Option<ReceiveData>> instance that receives the data.
+    ///
+    /// # Remarks
+    ///
+    /// This function listens for data from the server and sends an acknowledgment packet when data is received.
     pub async fn data_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::None, |receiver| {
             if let Some(data) = &receiver.data {
@@ -53,6 +81,15 @@ impl Controller {
         })
     }
 
+    /// Listens for the final handshake in the TCP connection process.
+    ///
+    /// # Arguments
+    ///
+    /// * `receiver` - A Receiver<Option<ReceiveData>> instance that receives the data.
+    ///
+    /// # Remarks
+    ///
+    /// This function listens for the final handshake in the TCP connection process and sends a final handshake packet when a FIN-ACK handshake packet is found.
     pub async fn wave_handshake_listener(&self, receiver: Receiver<Option<ReceiveData>>) {
         processor!(self, receiver, SpacilProcessor::WaveHandshake, |receiver| {
             if receiver.tcphdr.fin() == 1 && receiver.tcphdr.ack() == 1 {

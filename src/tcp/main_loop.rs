@@ -13,6 +13,21 @@ use crate::REMOTE_PORT;
 use crate::tcp::packet::data::{Controller, ReceiveData, SpacilProcessor};
 use crate::tcp::util::ChangingOrderSizes;
 
+/// This function is used to receive packets from a remote source.
+/// It creates a listener for different types of packets and spawns a new task to handle the packet reception.
+/// The received packets are then processed and the relevant data is extracted.
+/// The function is asynchronous and returns when the task handling the packet reception is complete.
+///
+/// # Arguments
+///
+/// * `controller` - A Controller object that manages the packet reception.
+///
+/// # Examples
+///
+/// ```
+/// let controller = Controller::new();
+/// receive_packet(controller).await;
+/// ```
 pub async fn receive_packet(controller: Controller) {
     let mut sockaddr_in = sockaddr_in::default();
 
@@ -82,6 +97,7 @@ pub async fn receive_packet(controller: Controller) {
                 *controller.last_seq_number.write() = tcp_head.__bindgen_anon_1.__bindgen_anon_2.seq;
             }
 
+            // Send the received packet to the sender channel
             sender.send(Some(ReceiveData {
                 iphdr: ip_head,
                 tcphdr: unsafe {
@@ -90,7 +106,7 @@ pub async fn receive_packet(controller: Controller) {
                 packet_size: receive_size as usize,
                 data: unsafe {
                     let data_size = receive_size - 20 - (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)as isize;
-                    if data_size != 0 {
+                    if data_size > 0 {
                         Some(buffer[(20 + (tcp_head.__bindgen_anon_1.__bindgen_anon_2.doff() * 4)) as usize .. receive_size as usize].to_vec())
                     }else {
                         None
@@ -101,6 +117,19 @@ pub async fn receive_packet(controller: Controller) {
     }).await.unwrap();
 }
 
+/// This function is used to print the packet received from the remote.
+/// It will print the packet's information and the data in the packet.
+///
+/// # Arguments
+///
+/// * `controller` - A Controller object that manages the packet sending.
+///
+/// # Examples
+///
+/// ```
+/// let controller = Controller::new();
+/// send_packet(controller).await;
+/// ```
 pub async fn send_packet(controller: Controller) {
     let mut packet = controller.make_packet_with_none().to_first_handshake();
     let sent_size = controller.send_packet_spacial(&mut packet, SpacilProcessor::InitHandshake);
