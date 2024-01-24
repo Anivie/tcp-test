@@ -2,7 +2,8 @@
 
 ## A computer network experiment
 
-Using raw sockets, I used (unsafe) Rust FFI to accomplish this functionality. The process was quite convoluted, but I have successfully completed it. It can now perform a handshake and receive information. The target connection is the Tokio echo demo.
+Using raw sockets, I used (unsafe) Rust FFI to accomplish this functionality. The process was quite convoluted(  
+It can now perform a handshake and receive information. The target connection is the Tokio echo demo.
 
 This project was inspired by [this experiment](https://github.com/MaxXor/raw-sockets-example/blob/master/rawsockets.c). I manually implemented it in Rust and added some simple wrappers. You can run this program directly using `cargo run` on Linux.
 
